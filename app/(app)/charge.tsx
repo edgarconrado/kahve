@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import {
-  Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useOpenShift } from '../../lib/shift';
-import { useCart, cartTotals } from '../../store/cart';
+import { useCart, cartTotals, lineUnitPrice } from '../../store/cart';
 import type { CardType, PaymentMethod } from '../../types/db';
 
 // Montos rápidos: redondeos hacia arriba útiles + billetes comunes
@@ -28,8 +29,31 @@ export default function Charge() {
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const subtotal = cart.subtotal();
-  const { tax, total } = cartTotals(subtotal);
+  const [discount, setDiscount] = useState(0);
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [customDiscount, setCustomDiscount] = useState('');
+
+  const gross = cart.subtotal();
+  const discounted = Math.max(+(gross - discount).toFixed(2), 0);
+  const { subtotal, tax, total } = cartTotals(discounted);
+
+  // Cajero: máximo 10% de descuento; supervisor/admin sin límite
+  const maxDiscount = employee?.role === 'cajero' ? +(gross * 0.10).toFixed(2) : gross;
+
+  const applyDiscount = (amount: number) => {
+    const value = +amount.toFixed(2);
+    if (value > maxDiscount) {
+      Alert.alert(
+        'Descuento no permitido',
+        `Tu rol permite hasta $${maxDiscount.toFixed(2)} (10%). ` +
+        'Un supervisor puede aplicar descuentos mayores.',
+      );
+      return;
+    }
+    setDiscount(Math.max(value, 0));
+    setShowDiscount(false);
+    setCustomDiscount('');
+  };
   const amounts = useMemo(() => quickAmounts(total), [total]);
   const change = received !== null ? +(received - total).toFixed(2) : null;
 
@@ -53,6 +77,7 @@ export default function Charge() {
         status: 'pagada',
         subtotal,
         tax,
+        discount,
         total,
         created_by: employee.id,
         paid_at: new Date().toISOString(),
@@ -73,7 +98,7 @@ export default function Charge() {
           order_id: order.id,
           product_id: line.product.id,
           product_name: line.product.name,
-          unit_price: line.product.base_price,
+          unit_price: lineUnitPrice(line),  // base + modificadores
           quantity: line.quantity,
           notes: line.notes ?? null,
         })
@@ -114,11 +139,63 @@ export default function Charge() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={90}
+    >
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.container}>
       <View style={styles.totalBox}>
         <Text style={styles.totalLabel}>Total a cobrar</Text>
         <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
-        <Text style={styles.totalSub}>IVA incluido ${tax.toFixed(2)}</Text>
+        <Text style={styles.totalSub}>
+          {discount > 0
+            ? `Descuento −$${discount.toFixed(2)} · IVA incluido $${tax.toFixed(2)}`
+            : `IVA incluido $${tax.toFixed(2)}`}
+        </Text>
+      </View>
+
+      <Pressable style={styles.discountRow} onPress={() => setShowDiscount(true)}>
+        <Ionicons name="pricetag-outline" size={16}
+          color={discount > 0 ? '#0F6E56' : '#666'} />
+        <Text style={[styles.discountText, discount > 0 && { color: '#0F6E56' }]}>
+          {discount > 0
+            ? `Descuento aplicado: $${discount.toFixed(2)}`
+            : 'Aplicar descuento'}
+        </Text>
+        {discount > 0 && (
+          <Pressable hitSlop={10} onPress={() => setDiscount(0)}>
+            <Text style={styles.discountRemove}>Quitar</Text>
+          </Pressable>
+        )}
+      </Pressable>
+
+      <Text style={styles.sectionTitle}>Nombre del cliente (opcional)</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Para llamarlo cuando su orden esté lista"
+        value={cart.customerName}
+        onChangeText={cart.setCustomerName}
+        autoCapitalize="words"
+        returnKeyType="done"
+      />
+
+      <Text style={styles.sectionTitle}>Tipo de orden</Text>
+      <View style={styles.methodRow}>
+        {([['llevar', 'Para llevar'], ['local', 'En local']] as const).map(([t, label]) => (
+          <Pressable
+            key={t}
+            style={[styles.methodButton, cart.orderType === t && styles.methodSelected]}
+            onPress={() => cart.setOrderType(t)}
+          >
+            <Text style={[styles.methodText,
+              cart.orderType === t && styles.methodTextSelected]}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
       <Text style={styles.sectionTitle}>¿Cómo pagó el cliente?</Text>
@@ -215,7 +292,51 @@ export default function Charge() {
         </Text>
       </Pressable>
       <Text style={styles.hint}>La orden pasará a la cola de preparación al confirmar.</Text>
+
+      <Modal visible={showDiscount} transparent animationType="slide"
+        onRequestClose={() => setShowDiscount(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, justifyContent: 'flex-end' }}
+        >
+          <Pressable style={styles.backdrop} onPress={() => setShowDiscount(false)} />
+          <View style={styles.discountSheet}>
+            <Text style={styles.discountTitle}>Aplicar descuento</Text>
+            <Text style={styles.discountSub}>
+              Sobre ${gross.toFixed(2)}
+              {employee?.role === 'cajero' ? ' · tu rol permite hasta 10%' : ''}
+            </Text>
+            <View style={styles.discountChips}>
+              {[5, 10, 15, 20].map((pct) => (
+                <Pressable key={pct} style={styles.discountChip}
+                  onPress={() => applyDiscount(gross * (pct / 100))}>
+                  <Text style={styles.discountChipText}>{pct}%</Text>
+                  <Text style={styles.discountChipSub}>
+                    −${(gross * (pct / 100)).toFixed(0)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginTop: 0 }]}
+                placeholder="Monto fijo, ej. 25"
+                keyboardType="decimal-pad"
+                value={customDiscount}
+                onChangeText={setCustomDiscount}
+              />
+              <Pressable
+                style={[styles.discountApply, !parseFloat(customDiscount) && { opacity: 0.5 }]}
+                disabled={!parseFloat(customDiscount)}
+                onPress={() => applyDiscount(parseFloat(customDiscount) || 0)}>
+                <Text style={styles.discountApplyText}>Aplicar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -252,4 +373,30 @@ const styles = StyleSheet.create({
   },
   confirmText: { color: '#FAECE7', fontSize: 15, fontWeight: '600' },
   hint: { fontSize: 11, color: '#888', textAlign: 'center' },
+  discountRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 10,
+    paddingVertical: 10, paddingHorizontal: 12,
+  },
+  discountText: { flex: 1, fontSize: 13, color: '#666', fontWeight: '600' },
+  discountRemove: { fontSize: 12, color: '#A32D2D', fontWeight: '600' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  discountSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 32, gap: 10,
+  },
+  discountTitle: { fontSize: 17, fontWeight: '700' },
+  discountSub: { fontSize: 12, color: '#888' },
+  discountChips: { flexDirection: 'row', gap: 8 },
+  discountChip: {
+    flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center',
+  },
+  discountChipText: { fontSize: 15, fontWeight: '700', color: '#4A1B0C' },
+  discountChipSub: { fontSize: 10, color: '#999', marginTop: 1 },
+  discountApply: {
+    backgroundColor: '#4A1B0C', borderRadius: 10,
+    paddingHorizontal: 18, justifyContent: 'center',
+  },
+  discountApplyText: { color: '#FAECE7', fontWeight: '600', fontSize: 13 },
 });

@@ -59,13 +59,21 @@ export default function Login() {
       >
         <Text style={styles.buttonText}>{busy ? 'Entrando…' : 'Entrar'}</Text>
       </Pressable>
+
+      <Pressable onPress={() => router.push('/register')} hitSlop={10}>
+        <Text style={styles.registerLink}>
+          ¿Nuevo en Kahve? Registra tu cafetería
+        </Text>
+      </Pressable>
+
+      <Text style={styles.version}>Kahve · v1.1</Text>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 34, fontWeight: '600', textAlign: 'center' },
+  title: { fontSize: 34, fontWeight: '600', textAlign: 'center', color: '#4A1B0C' },
   subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 12 },
   input: {
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
@@ -77,4 +85,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center', marginTop: 4,
   },
   buttonText: { color: '#FAECE7', fontSize: 16, fontWeight: '600' },
+  registerLink: {
+    textAlign: 'center', color: '#4A1B0C', fontSize: 13,
+    fontWeight: '600', marginTop: 12,
+  },
+  version: {
+    position: 'absolute', bottom: 24, alignSelf: 'center',
+    fontSize: 11, color: '#bbb',
+  },
 });

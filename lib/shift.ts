@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { supabase } from './supabase';
 import type { Employee, Shift } from '../types/db';
 
 // Devuelve el turno abierto de la sucursal del empleado.
 // Para el admin sin sucursal asignada toma el primer turno abierto de su org.
+// Se refresca cada vez que la pantalla recupera el foco (al volver de
+// otra pantalla), no solo al montarse.
 export function useOpenShift(employee: Employee | null) {
   const [shift, setShift] = useState<Shift | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +26,11 @@ export function useOpenShift(employee: Employee | null) {
     setLoading(false);
   }, [employee]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
 
   return { shift, loading, refresh };
 }

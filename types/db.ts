@@ -30,6 +30,7 @@ export interface Product {
   base_price: number;
   is_available: boolean;
   sort_order: number;
+  image_url: string | null;
 }
 
 export interface Modifier {
@@ -37,6 +38,7 @@ export interface Modifier {
   product_id: string;
   name: string;
   price_delta: number;
+  is_active?: boolean;
 }
 
 export interface Shift {

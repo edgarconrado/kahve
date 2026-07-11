@@ -236,7 +236,7 @@ export default function ShiftScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Abrir turno</Text>
         <Text style={styles.label}>Fondo de caja inicial</Text>
-        <TextInput
+        <TextInput placeholderTextColor="#9A9A9A"
           style={styles.input}
           keyboardType="decimal-pad"
           value={openingCash}
@@ -284,7 +284,7 @@ export default function ShiftScreen() {
               onPress={() => stepCount(d, -1)}>
               <Ionicons name="remove" size={20} color="#4A1B0C" />
             </Pressable>
-            <TextInput
+            <TextInput placeholderTextColor="#9A9A9A"
               style={styles.denomInput}
               keyboardType="number-pad"
               placeholder="0"
@@ -497,9 +497,9 @@ export default function ShiftScreen() {
                 </Text>
               </Pressable>
             </View>
-            <TextInput style={styles.input} placeholder="Monto"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Monto"
               keyboardType="decimal-pad" value={movAmount} onChangeText={setMovAmount} />
-            <TextInput style={styles.input}
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input}
               placeholder="Motivo (ej. pago al proveedor del pan)"
               value={movReason} onChangeText={setMovReason} />
             <Pressable style={styles.button} onPress={saveMovement}>
@@ -522,6 +522,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '600' },
   label: { fontSize: 13, color: '#666', marginTop: 6 },
   input: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
   },
@@ -530,6 +531,7 @@ const styles = StyleSheet.create({
   denomRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   denomLabel: { width: 70, fontSize: 15, fontWeight: '600' },
   denomInput: {
+    color: '#1F1F1F',
     width: 80, borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, textAlign: 'center',
   },

@@ -267,7 +267,7 @@ export default function Charge() {
       </Pressable>
 
       <Text style={styles.sectionTitle}>Nombre del cliente (opcional)</Text>
-      <TextInput
+      <TextInput placeholderTextColor="#9A9A9A"
         style={styles.input}
         placeholder="Para llamarlo cuando su orden esté lista"
         value={cart.customerName}
@@ -326,7 +326,7 @@ export default function Charge() {
           );
         })}
       </View>
-      <TextInput
+      <TextInput placeholderTextColor="#9A9A9A"
         style={styles.input}
         placeholder="Otra cantidad de propina"
         keyboardType="decimal-pad"
@@ -353,7 +353,7 @@ export default function Charge() {
               </Pressable>
             ))}
           </View>
-          <TextInput
+          <TextInput placeholderTextColor="#9A9A9A"
             style={styles.input}
             placeholder="Referencia del voucher (opcional)"
             value={reference}
@@ -390,7 +390,7 @@ export default function Charge() {
                 Exacto
               </Text>
             </Pressable>
-            <TextInput
+            <TextInput placeholderTextColor="#9A9A9A"
               style={[styles.input, { flex: 1, marginTop: 0 }]}
               placeholder="Otro monto"
               keyboardType="decimal-pad"
@@ -442,7 +442,7 @@ export default function Charge() {
               ))}
             </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput
+              <TextInput placeholderTextColor="#9A9A9A"
                 style={[styles.input, { flex: 1, marginTop: 0 }]}
                 placeholder="Monto fijo, ej. 25"
                 keyboardType="decimal-pad"
@@ -482,6 +482,7 @@ const styles = StyleSheet.create({
   methodText: { fontSize: 14, color: '#444' },
   methodTextSelected: { color: '#4A1B0C', fontWeight: '600' },
   input: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, marginTop: 4,
   },

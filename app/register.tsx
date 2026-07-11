@@ -76,22 +76,22 @@ export default function Register() {
         </Text>
 
         <Text style={styles.label}>Tu cafetería</Text>
-        <TextInput style={styles.input} placeholder="Nombre de la cafetería"
+        <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Nombre de la cafetería"
           value={orgName} onChangeText={setOrgName} autoCapitalize="words" />
-        <TextInput style={styles.input}
+        <TextInput placeholderTextColor="#9A9A9A" style={styles.input}
           placeholder="Nombre de la sucursal (opcional, ej. Centro)"
           value={branchName} onChangeText={setBranchName} autoCapitalize="words" />
 
         <Text style={styles.label}>Tu cuenta de administrador</Text>
-        <TextInput style={styles.input} placeholder="Tu nombre"
+        <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Tu nombre"
           value={ownerName} onChangeText={setOwnerName} autoCapitalize="words" />
-        <TextInput style={styles.input} placeholder="Correo"
+        <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Correo"
           autoCapitalize="none" keyboardType="email-address"
           value={email} onChangeText={setEmail} />
-        <TextInput style={styles.input} placeholder="PIN (6 dígitos)"
+        <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="PIN (6 dígitos)"
           keyboardType="number-pad" maxLength={6} secureTextEntry
           value={pin} onChangeText={setPin} />
-        <TextInput style={styles.input} placeholder="Confirma tu PIN"
+        <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Confirma tu PIN"
           keyboardType="number-pad" maxLength={6} secureTextEntry
           value={pin2} onChangeText={setPin2} />
 
@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 12, color: '#888', marginTop: 6 },
   input: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
   },

@@ -300,11 +300,11 @@ export default function Menu() {
                   : tier === 'free' ? 'Fotos de productos (Pro)' : 'Agregar foto (opcional)'}
               </Text>
             </Pressable>
-            <TextInput style={styles.input} placeholder="Nombre"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Nombre"
               value={name} onChangeText={setName} />
-            <TextInput style={styles.input} placeholder="Precio base"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Precio base"
               keyboardType="decimal-pad" value={price} onChangeText={setPrice} />
-            <TextInput style={styles.input} placeholder="Descripción (opcional)"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Descripción (opcional)"
               value={description} onChangeText={setDescription} />
 
             <Text style={styles.label}>Categoría</Text>
@@ -320,20 +320,20 @@ export default function Menu() {
                 </Pressable>
               ))}
             </View>
-            <TextInput style={styles.input} placeholder="…o escribe una categoría nueva"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="…o escribe una categoría nueva"
               value={newCategory} onChangeText={setNewCategory} />
 
             <Text style={styles.label}>Modificadores</Text>
             {modifiers.map((m, i) => (
               <View key={m.id ?? `new-${i}`} style={styles.modRow}>
-                <TextInput
+                <TextInput placeholderTextColor="#9A9A9A"
                   style={[styles.input, { flex: 1 }]}
                   placeholder="Nombre (ej. Tamaño grande)"
                   value={m.name}
                   onChangeText={(v) => setModifiers((ms) =>
                     ms.map((x, j) => (j === i ? { ...x, name: v } : x)))}
                 />
-                <TextInput
+                <TextInput placeholderTextColor="#9A9A9A"
                   style={[styles.input, { width: 80 }]}
                   placeholder="+$"
                   keyboardType="decimal-pad"
@@ -399,6 +399,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
   input: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11, fontSize: 15,
   },

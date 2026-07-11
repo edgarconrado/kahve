@@ -284,7 +284,7 @@ export default function Queue() {
             La orden saldrá de la cola y no contará en las ventas. Si ya se
             cobró en efectivo, recuerda devolver el dinero al cliente.
           </Text>
-          <TextInput
+          <TextInput placeholderTextColor="#9A9A9A"
             style={styles.reasonInput}
             placeholder="Motivo (ej. cliente se retiró, orden equivocada)"
             value={cancelReason}
@@ -401,6 +401,7 @@ const styles = StyleSheet.create({
   sheetWarning: { fontSize: 12, color: '#791F1F', backgroundColor: '#FCEBEB',
     borderRadius: 10, padding: 10, lineHeight: 17 },
   reasonInput: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11, fontSize: 14,
   },

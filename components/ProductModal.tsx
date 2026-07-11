@@ -84,7 +84,7 @@ export default function ProductModal({ product, onClose, onAdd }: Props) {
           })}
 
           <Text style={styles.sectionTitle}>Nota para el barista</Text>
-          <TextInput
+          <TextInput placeholderTextColor="#9A9A9A"
             style={styles.notesInput}
             placeholder="Ej. sin azúcar, extra caliente"
             value={notes}
@@ -137,6 +137,7 @@ const styles = StyleSheet.create({
   modifierName: { flex: 1, fontSize: 14 },
   modifierPrice: { fontSize: 13, color: '#666' },
   notesInput: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
   },

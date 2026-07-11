@@ -18,9 +18,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A1B0C"
       },
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "permissions": []
     },
     "ios": {
       "bundleIdentifier": "com.jacarandalab.kahve",
@@ -36,11 +34,9 @@
       ]
     ],
     "extra": {
-      "router": {},
       "eas": {
         "projectId": "8d185c21-277e-4f9b-976b-fd44c988a9b0"
       }
-    },
-    "owner": "edgar_conrado"
+    }
   }
 }

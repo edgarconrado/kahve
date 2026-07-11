@@ -18,7 +18,13 @@ export default function Login() {
     const { error } = await signInWithPin(email.trim(), pin);
     setBusy(false);
     if (error) {
-      setError('Correo o PIN incorrectos. Intenta de nuevo.');
+      // Distinguir credenciales incorrectas de problemas de configuración/red
+      const msg = error.message ?? '';
+      if (msg.includes('Invalid login credentials')) {
+        setError('Correo o PIN incorrectos. Intenta de nuevo.');
+      } else {
+        setError(`Error de conexión: ${msg}`);
+      }
       return;
     }
     router.replace('/');
@@ -32,7 +38,7 @@ export default function Login() {
       <Text style={styles.title}>Kahve</Text>
       <Text style={styles.subtitle}>Inicia sesión para abrir tu turno</Text>
 
-      <TextInput
+      <TextInput placeholderTextColor="#9A9A9A"
         style={styles.input}
         placeholder="Correo"
         autoCapitalize="none"
@@ -40,7 +46,7 @@ export default function Login() {
         value={email}
         onChangeText={setEmail}
       />
-      <TextInput
+      <TextInput placeholderTextColor="#9A9A9A"
         style={styles.input}
         placeholder="PIN"
         secureTextEntry
@@ -66,7 +72,7 @@ export default function Login() {
         </Text>
       </Pressable>
 
-      <Text style={styles.version}>Kahve · v1.1</Text>
+      <Text style={styles.version}>Kahve · v1.2</Text>
     </KeyboardAvoidingView>
   );
 }
@@ -76,6 +82,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 34, fontWeight: '600', textAlign: 'center', color: '#4A1B0C' },
   subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 12 },
   input: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
   },

@@ -271,12 +271,12 @@ export default function Team() {
         <View style={[styles.sheet, { maxHeight: '80%' }]}>
           <Text style={styles.sheetTitle}>Nuevo empleado</Text>
           <ScrollView contentContainerStyle={{ gap: 10 }}>
-            <TextInput style={styles.input} placeholder="Nombre completo"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Nombre completo"
               value={fullName} onChangeText={setFullName} />
-            <TextInput style={styles.input} placeholder="Correo"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Correo"
               autoCapitalize="none" keyboardType="email-address"
               value={email} onChangeText={setEmail} />
-            <TextInput style={styles.input} placeholder="PIN (6 dígitos)"
+            <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="PIN (6 dígitos)"
               keyboardType="number-pad" maxLength={6} secureTextEntry
               value={pin} onChangeText={setPin} />
             <Text style={styles.label}>Rol</Text>
@@ -379,6 +379,7 @@ const styles = StyleSheet.create({
   deactivateText: { color: '#A32D2D', fontWeight: '600', fontSize: 13 },
   missing: { fontSize: 12, color: '#A32D2D' },
   input: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 11, fontSize: 15,
   },

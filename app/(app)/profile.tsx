@@ -227,10 +227,10 @@ export default function Profile() {
         <Pressable style={styles.backdrop} onPress={() => setShowPin(false)} />
         <View style={styles.sheet}>
           <Text style={styles.sheetTitle}>Cambiar PIN</Text>
-          <TextInput style={styles.input} placeholder="Nuevo PIN (6 dígitos)"
+          <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Nuevo PIN (6 dígitos)"
             keyboardType="number-pad" maxLength={6} secureTextEntry
             value={pin1} onChangeText={setPin1} />
-          <TextInput style={styles.input} placeholder="Confirma el PIN"
+          <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Confirma el PIN"
             keyboardType="number-pad" maxLength={6} secureTextEntry
             value={pin2} onChangeText={setPin2} />
           <Pressable
@@ -327,6 +327,7 @@ const styles = StyleSheet.create({
   },
   sheetTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
   input: {
+    color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
   },

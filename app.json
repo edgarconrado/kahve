@@ -1,35 +1,42 @@
 {
   "expo": {
-    "name": "kahve",
-    "scheme": "kahve",
+    "name": "Kahve",
     "slug": "kahve",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "scheme": "kahve",
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "ios": {
-      "supportsTablet": true
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#4A1B0C"
     },
     "android": {
+      "package": "com.jacarandalab.kahve",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#4A1B0C"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "permissions": []
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "ios": {
+      "bundleIdentifier": "com.jacarandalab.kahve",
+      "supportsTablet": true
     },
     "plugins": [
       "expo-router",
-      "expo-audio"
-    ]
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kahve usa tus fotos para ilustrar los productos de tu menú."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "SE_LLENA_SOLO_CON_EAS_INIT"
+      }
+    }
   }
 }

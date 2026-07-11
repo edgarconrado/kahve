@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
+import { usePlan } from '../../lib/plan';
 import { useOpenShift } from '../../lib/shift';
 import { can, type Permission } from '../../lib/permissions';
 
@@ -35,6 +36,7 @@ interface ClosedShift {
 
 export default function Profile() {
   const { employee, signOut } = useAuth();
+  const { tier, isTrial, daysLeft } = usePlan(employee);
   const { shift } = useOpenShift(employee);
   const [stats, setStats] = useState({ orders: 0, sold: 0, cancelled: 0 });
   const [showPin, setShowPin] = useState(false);
@@ -123,8 +125,21 @@ export default function Profile() {
         </View>
         <Text style={styles.name}>{employee?.full_name}</Text>
         <Text style={styles.email}>{employee?.email}</Text>
-        <View style={[styles.roleChip, { backgroundColor: meta.bg }]}>
-          <Text style={[styles.roleChipText, { color: meta.fg }]}>{meta.label}</Text>
+        <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>
+          <View style={[styles.roleChip, { backgroundColor: meta.bg, marginTop: 0 }]}>
+            <Text style={[styles.roleChipText, { color: meta.fg }]}>{meta.label}</Text>
+          </View>
+          <View style={[styles.roleChip, {
+            backgroundColor: tier === 'pro' ? '#4A1B0C' : '#f0f0f0', marginTop: 0,
+          }]}>
+            <Text style={[styles.roleChipText, {
+              color: tier === 'pro' ? '#FAECE7' : '#888',
+            }]}>
+              {isTrial
+                ? `Prueba Pro · ${daysLeft} día${daysLeft === 1 ? '' : 's'}`
+                : tier === 'pro' ? 'Kahve Pro' : 'Plan Gratis'}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -171,6 +186,14 @@ export default function Profile() {
 
       {/* Acciones */}
       <View style={styles.actions}>
+        {employee?.role === 'admin' && (
+          <Pressable style={styles.actionRow}
+            onPress={() => router.push('/(app)/upgrade')}>
+            <Ionicons name="star-outline" size={18} color="#B8860B" />
+            <Text style={styles.actionText}>Kahve Pro</Text>
+            <Ionicons name="chevron-forward" size={16} color="#bbb" />
+          </Pressable>
+        )}
         <Pressable style={styles.actionRow} onPress={() => setShowPin(true)}>
           <Ionicons name="lock-closed-outline" size={18} color="#666" />
           <Text style={styles.actionText}>Cambiar PIN</Text>

@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { can } from '../../lib/permissions';
+import { usePlan, proFeatureAlert } from '../../lib/plan';
 import type { Order } from '../../types/db';
 
 interface QueueItem {
@@ -26,6 +27,7 @@ const LATE_MINUTES = 5;
 export default function Queue() {
   const { employee } = useAuth();
   const player = useAudioPlayer(require('../../assets/new-order.wav'));
+  const { tier } = usePlan(employee);
   const [orders, setOrders] = useState<QueueOrder[]>([]);
   const [readyToday, setReadyToday] = useState(0);
   const [avgPrepSeconds, setAvgPrepSeconds] = useState<number | null>(null);
@@ -169,8 +171,14 @@ export default function Queue() {
           </Text>
         </View>
         <Pressable style={{ marginLeft: 'auto' }} hitSlop={8}
-          onPress={() => router.push('/(app)/board')}>
-          <Ionicons name="tv-outline" size={21} color="#4A1B0C" />
+          onPress={() => tier === 'free'
+            ? proFeatureAlert('El tablero de órdenes listas para tus clientes')
+            : router.push('/(app)/board')}>
+          <Ionicons
+            name={tier === 'free' ? 'lock-closed' : 'tv-outline'}
+            size={21}
+            color={tier === 'free' ? '#bbb' : '#4A1B0C'}
+          />
         </Pressable>
       </View>
 

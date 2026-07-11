@@ -47,6 +47,30 @@ Deno.serve(async (req) => {
     return json({ error: 'Se requiere rol de admin' }, 403);
   }
 
+  // Candado de plan: el gratuito permite hasta 3 empleados activos.
+  // El trial vigente cuenta como Pro.
+  const { data: org } = await admin
+    .from('organizations')
+    .select('plan, trial_ends_at')
+    .eq('id', adminEmployee.organization_id)
+    .single();
+  const isPro = org?.plan === 'pro' ||
+    (org?.plan === 'trial' && org.trial_ends_at &&
+      new Date(org.trial_ends_at) > new Date());
+  if (!isPro) {
+    const { count } = await admin
+      .from('employees')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', adminEmployee.organization_id)
+      .eq('is_active', true);
+    if ((count ?? 0) >= 3) {
+      return json({
+        error: 'Tu plan gratuito permite hasta 3 empleados activos. ' +
+          'Actualiza a Kahve Pro para agregar más.',
+      }, 403);
+    }
+  }
+
   // 3. Validar el body
   let body: CreateEmployeeRequest;
   try {

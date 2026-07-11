@@ -8,6 +8,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
 import { can, type Permission } from '../../../lib/permissions';
+import { usePlan, proFeatureAlert, FREE_MAX_EMPLOYEES } from '../../../lib/plan';
 import type { Employee, EmployeeRole } from '../../../types/db';
 
 interface Branch { id: string; name: string }
@@ -39,6 +40,7 @@ const MATRIX_ROLES: { role: EmployeeRole; short: string }[] = [
 
 export default function Team() {
   const { employee: me } = useAuth();
+  const { tier } = usePlan(me);
   const [team, setTeam] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -205,7 +207,15 @@ export default function Team() {
       </View>
 
       {/* FAB de alta */}
-      <Pressable style={styles.fab} onPress={() => setShowForm(true)}>
+      <Pressable style={styles.fab} onPress={() => {
+        if (tier === 'free' && team.length >= FREE_MAX_EMPLOYEES) {
+          proFeatureAlert(
+            `Tu plan gratuito incluye hasta ${FREE_MAX_EMPLOYEES} empleados activos. Agregar más`,
+          );
+          return;
+        }
+        setShowForm(true);
+      }}>
         <Ionicons name="person-add" size={22} color="#FAECE7" />
       </Pressable>
 

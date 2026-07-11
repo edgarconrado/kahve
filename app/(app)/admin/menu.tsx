@@ -10,6 +10,7 @@ import { decode } from 'base64-arraybuffer';
 import { Image } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
+import { usePlan, proFeatureAlert } from '../../../lib/plan';
 import type { Modifier, Product } from '../../../types/db';
 
 interface Category { id: string; name: string }
@@ -17,6 +18,7 @@ type ProductFull = Product & { modifiers: Modifier[] };
 
 export default function Menu() {
   const { employee } = useAuth();
+  const { tier } = usePlan(employee);
   const [products, setProducts] = useState<ProductFull[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<ProductFull | null>(null);
@@ -75,6 +77,10 @@ export default function Menu() {
   };
 
   const pickImage = async () => {
+    if (tier === 'free') {
+      proFeatureAlert('Agregar fotos a tus productos');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -284,11 +290,14 @@ export default function Menu() {
                 <Image source={{ uri: imageUri }} style={styles.imagePreview} />
               ) : (
                 <View style={styles.imagePlaceholder}>
-                  <Ionicons name="camera-outline" size={22} color="#999" />
+                  <Ionicons
+                    name={tier === 'free' ? 'lock-closed' : 'camera-outline'}
+                    size={22} color="#999" />
                 </View>
               )}
-              <Text style={styles.imagePickerText}>
-                {imageUri ? 'Cambiar foto' : 'Agregar foto (opcional)'}
+              <Text style={[styles.imagePickerText, tier === 'free' && { color: '#999' }]}>
+                {imageUri ? 'Cambiar foto'
+                  : tier === 'free' ? 'Fotos de productos (Pro)' : 'Agregar foto (opcional)'}
               </Text>
             </Pressable>
             <TextInput style={styles.input} placeholder="Nombre"

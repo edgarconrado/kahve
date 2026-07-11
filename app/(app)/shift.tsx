@@ -34,7 +34,7 @@ export default function ShiftScreen() {
       Promise.all([
         supabase
           .from('payments')
-          .select('amount, method, card_type, orders(status)')
+          .select('amount, tip, method, card_type, orders(status)')
           .eq('shift_id', shift.id),
         supabase
           .from('cash_movements')
@@ -44,18 +44,29 @@ export default function ShiftScreen() {
       ]).then(([{ data: pays }, { data: movs }]) => {
         const totals: Record<string, number> = {};
         let cash = 0;
+        let cashTips = 0;
+        let cardTips = 0;
         (pays ?? []).forEach((p: any) => {
           if (p.orders?.status === 'cancelada') return;
           const key = p.method === 'tarjeta' ? `tarjeta-${p.card_type}` : p.method;
           totals[key] = (totals[key] ?? 0) + Number(p.amount);
-          if (p.method === 'efectivo') cash += Number(p.amount);
+          if (p.method === 'efectivo') {
+            cash += Number(p.amount);
+            cashTips += Number(p.tip ?? 0);
+          } else {
+            cardTips += Number(p.tip ?? 0);
+          }
         });
+        if (cashTips > 0) totals['propinas-efectivo'] = cashTips;
+        if (cardTips > 0) totals['propinas-otros'] = cardTips;
         setByMethod(totals);
         setMovements((movs as any[]) ?? []);
         // Esperado = fondo + ventas efectivo + depósitos − retiros
         const movNet = (movs ?? []).reduce((a: number, m: any) =>
           a + (m.type === 'deposito' ? Number(m.amount) : -Number(m.amount)), 0);
-        setExpectedCash(+(Number(shift.opening_cash) + cash + movNet).toFixed(2));
+        setExpectedCash(
+          +(Number(shift.opening_cash) + cash + cashTips + movNet).toFixed(2),
+        );
       });
     }, [shift?.id]),
   );
@@ -104,6 +115,30 @@ export default function ShiftScreen() {
 
   const setCount = (denomination: number, value: string) =>
     setCounts((c) => ({ ...c, [denomination]: value.replace(/[^0-9]/g, '') }));
+
+  // Botones +/− para contar billetes sin teclear
+  const stepCount = (denomination: number, delta: number) =>
+    setCounts((c) => {
+      const current = parseInt(c[denomination] ?? '0', 10) || 0;
+      const next = Math.max(0, Math.min(999, current + delta));
+      return { ...c, [denomination]: next === 0 ? '' : String(next) };
+    });
+
+  // Teclado numérico para el total de monedas
+  const [showCoinPad, setShowCoinPad] = useState(false);
+  const [coinDraft, setCoinDraft] = useState('');
+
+  const coinPadPress = (key: string) => {
+    setCoinDraft((d) => {
+      if (key === '⌫') return d.slice(0, -1);
+      if (key === '.') return d.includes('.') || d === '' ? d : d + '.';
+      // dígito: máximo 2 decimales y 6 enteros
+      const [ints = '', decs] = d.split('.');
+      if (decs !== undefined && decs.length >= 2) return d;
+      if (decs === undefined && ints.length >= 6) return d;
+      return d + key;
+    });
+  };
 
   const openShift = async () => {
     if (!employee) return;
@@ -245,6 +280,10 @@ export default function ShiftScreen() {
         return (
           <View key={d} style={styles.denomRow}>
             <Text style={styles.denomLabel}>${d}</Text>
+            <Pressable style={styles.stepButton} hitSlop={6}
+              onPress={() => stepCount(d, -1)}>
+              <Ionicons name="remove" size={20} color="#4A1B0C" />
+            </Pressable>
             <TextInput
               style={styles.denomInput}
               keyboardType="number-pad"
@@ -253,6 +292,10 @@ export default function ShiftScreen() {
               value={counts[d] ?? ''}
               onChangeText={(v) => setCount(d, v)}
             />
+            <Pressable style={styles.stepButton} hitSlop={6}
+              onPress={() => stepCount(d, 1)}>
+              <Ionicons name="add" size={20} color="#4A1B0C" />
+            </Pressable>
             <Text style={styles.denomSubtotal}>
               {qty > 0 ? `$${(d * qty).toLocaleString('es-MX')}` : '—'}
             </Text>
@@ -261,13 +304,15 @@ export default function ShiftScreen() {
       })}
       <View style={styles.denomRow}>
         <Text style={styles.denomLabel}>Monedas</Text>
-        <TextInput
-          style={[styles.denomInput, { flex: 1 }]}
-          keyboardType="decimal-pad"
-          placeholder="Total en monedas, ej. 118.50"
-          value={coins}
-          onChangeText={setCoins}
-        />
+        <Pressable
+          style={styles.coinButton}
+          onPress={() => { setCoinDraft(coins); setShowCoinPad(true); }}
+        >
+          <Ionicons name="calculator-outline" size={16} color="#4A1B0C" />
+          <Text style={[styles.coinButtonText, !coins && { color: '#999' }]}>
+            {coins ? `$${parseFloat(coins).toFixed(2)}` : 'Capturar total en monedas'}
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.totalBox}>
@@ -286,7 +331,11 @@ export default function ShiftScreen() {
           ['tarjeta-debito', 'Tarjeta débito', 'card-outline'],
           ['tarjeta-credito', 'Tarjeta crédito', 'card-outline'],
           ['transferencia', 'Transferencia', 'business-outline'],
-        ].map(([key, label, icon]) => (
+          ['propinas-efectivo', 'Propinas en efectivo', 'heart-outline'],
+          ['propinas-otros', 'Propinas tarjeta/transf.', 'heart-outline'],
+        ].filter(([key]) =>
+          !key.startsWith('propinas') || (byMethod[key] ?? 0) > 0,
+        ).map(([key, label, icon]) => (
           <View key={key} style={styles.methodRow}>
             <Ionicons name={icon as any} size={15} color="#777" />
             <Text style={styles.methodLabel}>{label}</Text>
@@ -383,6 +432,43 @@ export default function ShiftScreen() {
           {busy ? 'Cerrando…' : 'Cerrar turno y enviar corte'}
         </Text>
       </Pressable>
+
+      <Modal visible={showCoinPad} transparent animationType="slide"
+        onRequestClose={() => setShowCoinPad(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <Pressable style={styles.backdrop} onPress={() => setShowCoinPad(false)} />
+          <View style={styles.coinPadSheet}>
+            <Text style={styles.movementTitle}>Total en monedas</Text>
+            <View style={styles.coinDisplay}>
+              <Text style={styles.coinDisplayText}>
+                ${coinDraft || '0'}
+              </Text>
+            </View>
+            <View style={styles.padGrid}>
+              {['1','2','3','4','5','6','7','8','9','.','0','⌫'].map((k) => (
+                <Pressable key={k} style={styles.padKey}
+                  onPress={() => coinPadPress(k)}>
+                  {k === '⌫'
+                    ? <Ionicons name="backspace-outline" size={24} color="#4A1B0C" />
+                    : <Text style={styles.padKeyText}>{k}</Text>}
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              style={styles.button}
+              onPress={() => {
+                const value = parseFloat(coinDraft);
+                setCoins(value > 0 ? String(value) : '');
+                setShowCoinPad(false);
+              }}
+            >
+              <Text style={styles.buttonText}>
+                Confirmar ${coinDraft ? (parseFloat(coinDraft) || 0).toFixed(2) : '0.00'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showMovement} transparent animationType="slide"
         onRequestClose={() => setShowMovement(false)}>
@@ -486,6 +572,35 @@ const styles = StyleSheet.create({
   movChipRetiro: { borderColor: '#A32D2D', backgroundColor: '#FCEBEB' },
   movChipDeposito: { borderColor: '#0F6E56', backgroundColor: '#E1F5EE' },
   movChipText: { fontSize: 12, color: '#555' },
+  stepButton: {
+    width: 40, height: 40, borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#4A1B0C',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff',
+  },
+  coinButton: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
+    paddingVertical: 12, paddingHorizontal: 12,
+  },
+  coinButtonText: { fontSize: 15, color: '#222', fontWeight: '600' },
+  coinPadSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    padding: 20, paddingBottom: 32, gap: 12,
+  },
+  coinDisplay: {
+    backgroundColor: '#f7f7f7', borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  coinDisplayText: { fontSize: 28, fontWeight: '700', color: '#222' },
+  padGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+  },
+  padKey: {
+    width: '31.5%', paddingVertical: 16, borderRadius: 12,
+    borderWidth: 1, borderColor: '#e5e5e5',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  padKeyText: { fontSize: 22, fontWeight: '600', color: '#222' },
   button: {
     backgroundColor: '#4A1B0C', borderRadius: 10,
     paddingVertical: 14, alignItems: 'center', marginTop: 8,

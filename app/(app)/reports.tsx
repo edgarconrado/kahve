@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../lib/auth';
+import { usePlan, proFeatureAlert } from '../../lib/plan';
 
 type Period = 'hoy' | 'semana' | 'mes' | 'año';
 const PERIODS: { key: Period; label: string }[] = [
@@ -64,6 +66,8 @@ function rangeFor(period: Period): { from: Date; to: Date } {
 }
 
 export default function Reports() {
+  const { employee } = useAuth();
+  const { tier } = usePlan(employee);
   const [period, setPeriod] = useState<Period>('hoy');
   const [summary, setSummary] = useState<Summary | null>(null);
   const [bars, setBars] = useState<BarRow[]>([]);
@@ -234,18 +238,39 @@ export default function Reports() {
       {/* Selector de periodo + exportar */}
       <View style={styles.topRow}>
         <View style={styles.periodRow}>
-          {PERIODS.map((p) => (
-            <Pressable key={p.key}
-              style={[styles.periodChip, period === p.key && styles.periodChipOn]}
-              onPress={() => setPeriod(p.key)}>
-              <Text style={[styles.periodText, period === p.key && styles.periodTextOn]}>
-                {p.label}
-              </Text>
-            </Pressable>
-          ))}
+          {PERIODS.map((p) => {
+            const locked = tier === 'free' && p.key !== 'hoy';
+            return (
+              <Pressable key={p.key}
+                style={[styles.periodChip, period === p.key && styles.periodChipOn]}
+                onPress={() => locked
+                  ? proFeatureAlert('Ver reportes por semana, mes y año')
+                  : setPeriod(p.key)}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  {locked && <Ionicons name="lock-closed" size={10} color="#aaa" />}
+                  <Text style={[
+                    styles.periodText,
+                    period === p.key && styles.periodTextOn,
+                    locked && { color: '#aaa' },
+                  ]}>
+                    {p.label}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
-        <Pressable style={styles.exportButton} onPress={exportPdf} disabled={exporting}>
-          <Ionicons name="share-outline" size={17} color="#4A1B0C" />
+        <Pressable
+          style={[styles.exportButton, tier === 'free' && { borderColor: '#ccc' }]}
+          disabled={exporting}
+          onPress={() => tier === 'free'
+            ? proFeatureAlert('Exportar y compartir reportes en PDF')
+            : exportPdf()}>
+          <Ionicons
+            name={tier === 'free' ? 'lock-closed' : 'share-outline'}
+            size={17}
+            color={tier === 'free' ? '#aaa' : '#4A1B0C'}
+          />
         </Pressable>
       </View>
 

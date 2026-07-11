@@ -37,10 +37,18 @@ export default function Pos() {
     useCallback(() => {
       supabase
         .from('products')
-        .select('*, modifiers(*)')
+        .select('*, modifiers(*), product_categories(sort_order, name)')
         .eq('is_active', true)
-        .order('sort_order')
-        .then(({ data }) => setProducts((data as ProductWithModifiers[]) ?? []));
+        .then(({ data }) => {
+          // Orden estable: por categoría (su sort_order) y por nombre
+          const rows = ((data as any[]) ?? []).sort((a, b) => {
+            const catDiff = (a.product_categories?.sort_order ?? 999)
+              - (b.product_categories?.sort_order ?? 999);
+            if (catDiff !== 0) return catDiff;
+            return a.name.localeCompare(b.name, 'es');
+          });
+          setProducts(rows as ProductWithModifiers[]);
+        });
       supabase
         .from('product_categories')
         .select('id, name, sort_order')

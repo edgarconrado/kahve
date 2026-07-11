@@ -4,6 +4,9 @@ import {
   Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { usePlan, proFeatureAlert } from '../../lib/plan';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useOpenShift } from '../../lib/shift';
@@ -33,9 +36,15 @@ export default function Charge() {
   const [showDiscount, setShowDiscount] = useState(false);
   const [customDiscount, setCustomDiscount] = useState('');
 
+  const { tier } = usePlan(employee);
+  const [tip, setTip] = useState(0);
+  const [customTip, setCustomTip] = useState('');
+
   const gross = cart.subtotal();
   const discounted = Math.max(+(gross - discount).toFixed(2), 0);
   const { subtotal, tax, total } = cartTotals(discounted);
+  // La propina se suma al cobro pero NO es venta: viaja aparte en payments.tip
+  const grandTotal = +(total + tip).toFixed(2);
 
   // Cajero: máximo 10% de descuento; supervisor/admin sin límite
   const maxDiscount = employee?.role === 'cajero' ? +(gross * 0.10).toFixed(2) : gross;
@@ -54,13 +63,78 @@ export default function Charge() {
     setShowDiscount(false);
     setCustomDiscount('');
   };
-  const amounts = useMemo(() => quickAmounts(total), [total]);
-  const change = received !== null ? +(received - total).toFixed(2) : null;
+  const amounts = useMemo(() => quickAmounts(grandTotal), [grandTotal]);
+  const change = received !== null ? +(received - grandTotal).toFixed(2) : null;
 
   const canConfirm =
     cart.lines.length > 0 &&
     !busy &&
-    (method !== 'efectivo' || (received !== null && received >= total));
+    (method !== 'efectivo' || (received !== null && received >= grandTotal));
+
+  const shareTicket = async (order: any, lines: typeof cart.lines, info: {
+    total: number; tip: number; discount: number; tax: number;
+    method: string; received: number | null; change: number | null;
+  }) => {
+    try {
+      const { data: org } = await supabase
+        .from('organizations').select('name').eq('id', employee!.organization_id).single();
+      const rows = lines.map((l) => {
+        const unit = lineUnitPrice(l);
+        const mods = l.modifiers.length
+          ? `<div style="color:#777;font-size:11px">${l.modifiers.map((m) => m.name).join(' · ')}</div>`
+          : '';
+        return `<tr>
+          <td>${l.quantity}x ${l.product.name}${mods}</td>
+          <td style="text-align:right;vertical-align:top">$${(unit * l.quantity).toFixed(2)}</td>
+        </tr>`;
+      }).join('');
+      const methodLabel = info.method === 'tarjeta' ? 'Tarjeta'
+        : info.method === 'transferencia' ? 'Transferencia' : 'Efectivo';
+      const html = `
+        <html><head><meta charset="utf-8"><style>
+          body { font-family: -apple-system, Helvetica, sans-serif; color: #222;
+                 max-width: 320px; margin: 0 auto; padding: 24px 16px; }
+          h1 { font-size: 20px; color: #4A1B0C; text-align: center; margin: 0; }
+          .sub { text-align: center; color: #888; font-size: 11px; margin: 4px 0 14px; }
+          table { width: 100%; border-collapse: collapse; font-size: 13px; }
+          td { padding: 5px 0; border-bottom: 1px dashed #eee; }
+          .tot td { border-bottom: none; padding: 3px 0; font-size: 12px; color: #555; }
+          .grand td { font-size: 16px; font-weight: 700; color: #222; padding-top: 8px; }
+          .foot { text-align: center; color: #999; font-size: 11px; margin-top: 18px; }
+        </style></head><body>
+          <h1>${org?.name ?? 'Kahve'}</h1>
+          <div class="sub">
+            Ticket #${String(order.order_number).padStart(3, '0')}
+            · ${new Date().toLocaleString('es-MX')}
+            ${order.customer_name ? `<br>Cliente: ${order.customer_name}` : ''}
+          </div>
+          <table>${rows}</table>
+          <table style="margin-top:10px">
+            ${info.discount > 0
+              ? `<tr class="tot"><td>Descuento</td><td style="text-align:right">−$${info.discount.toFixed(2)}</td></tr>` : ''}
+            <tr class="tot"><td>IVA incluido</td><td style="text-align:right">$${info.tax.toFixed(2)}</td></tr>
+            ${info.tip > 0
+              ? `<tr class="tot"><td>Propina</td><td style="text-align:right">$${info.tip.toFixed(2)}</td></tr>` : ''}
+            <tr class="grand"><td>Total</td><td style="text-align:right">$${(info.total + info.tip).toFixed(2)}</td></tr>
+            <tr class="tot"><td>Pago</td><td style="text-align:right">${methodLabel}</td></tr>
+            ${info.received !== null
+              ? `<tr class="tot"><td>Recibido</td><td style="text-align:right">$${info.received.toFixed(2)}</td></tr>
+                 <tr class="tot"><td>Cambio</td><td style="text-align:right">$${(info.change ?? 0).toFixed(2)}</td></tr>` : ''}
+          </table>
+          <div class="foot">¡Gracias por tu visita! ☕</div>
+        </body></html>`;
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Enviar ticket',
+          UTI: 'com.adobe.pdf',
+        });
+      }
+    } catch (e: any) {
+      Alert.alert('No se pudo generar el ticket', e?.message ?? '');
+    }
+  };
 
   const confirm = async () => {
     if (!employee || !shift) return;
@@ -123,19 +197,37 @@ export default function Charge() {
       method,
       card_type: method === 'tarjeta' ? cardType : null,
       amount: total,
+      tip,
       received: method === 'efectivo' ? received : null,
       change_due: method === 'efectivo' ? change : null,
       reference: reference || null,
       created_by: employee.id,
     });
 
+    // Capturar lo necesario para el ticket ANTES de limpiar el carrito
+    const ticketLines = [...cart.lines];
+    const ticketInfo = { total, tip, discount, tax, method, received, change };
+
     cart.clear();
     setBusy(false);
     Alert.alert(
       `Orden #${String(order.order_number).padStart(3, '0')}`,
       'Pago registrado. Enviada a preparación.',
+      [
+        {
+          text: 'Enviar ticket',
+          onPress: () => {
+            if (tier === 'free') {
+              proFeatureAlert('Enviar tickets por WhatsApp o correo');
+              router.back();
+              return;
+            }
+            shareTicket(order, ticketLines, ticketInfo).finally(() => router.back());
+          },
+        },
+        { text: 'Listo', style: 'cancel', onPress: () => router.back() },
+      ],
     );
-    router.back();
   };
 
   return (
@@ -149,11 +241,13 @@ export default function Charge() {
       contentContainerStyle={styles.container}>
       <View style={styles.totalBox}>
         <Text style={styles.totalLabel}>Total a cobrar</Text>
-        <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+        <Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text>
         <Text style={styles.totalSub}>
-          {discount > 0
-            ? `Descuento −$${discount.toFixed(2)} · IVA incluido $${tax.toFixed(2)}`
-            : `IVA incluido $${tax.toFixed(2)}`}
+          {[
+            discount > 0 ? `Descuento −$${discount.toFixed(2)}` : null,
+            tip > 0 ? `Venta $${total.toFixed(2)} + propina $${tip.toFixed(2)}` : null,
+            `IVA incluido $${tax.toFixed(2)}`,
+          ].filter(Boolean).join(' · ')}
         </Text>
       </View>
 
@@ -212,6 +306,36 @@ export default function Charge() {
           </Pressable>
         ))}
       </View>
+
+      <Text style={styles.sectionTitle}>Propina (opcional)</Text>
+      <View style={styles.methodRow}>
+        {[0, 5, 10, 15].map((pct) => {
+          const value = pct === 0 ? 0 : +(total * (pct / 100)).toFixed(2);
+          const selected = tip === value && customTip === '';
+          return (
+            <Pressable key={pct}
+              style={[styles.methodButton, selected && styles.methodSelected]}
+              onPress={() => { setTip(value); setCustomTip(''); }}>
+              <Text style={[styles.methodText, selected && styles.methodTextSelected]}>
+                {pct === 0 ? 'Sin propina' : `${pct}%`}
+              </Text>
+              {pct > 0 && (
+                <Text style={styles.tipSub}>${value.toFixed(0)}</Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder="Otra cantidad de propina"
+        keyboardType="decimal-pad"
+        value={customTip}
+        onChangeText={(v) => {
+          setCustomTip(v);
+          setTip(Math.max(parseFloat(v) || 0, 0));
+        }}
+      />
 
       {method === 'tarjeta' && (
         <>
@@ -288,7 +412,7 @@ export default function Charge() {
         onPress={confirm}
       >
         <Text style={styles.confirmText}>
-          {busy ? 'Registrando…' : `Confirmar pago · $${total.toFixed(2)}`}
+          {busy ? 'Registrando…' : `Confirmar pago · $${grandTotal.toFixed(2)}`}
         </Text>
       </Pressable>
       <Text style={styles.hint}>La orden pasará a la cola de preparación al confirmar.</Text>
@@ -373,6 +497,7 @@ const styles = StyleSheet.create({
   },
   confirmText: { color: '#FAECE7', fontSize: 15, fontWeight: '600' },
   hint: { fontSize: 11, color: '#888', textAlign: 'center' },
+  tipSub: { fontSize: 10, color: '#999', marginTop: 1 },
   discountRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: '#e5e5e5', borderRadius: 10,

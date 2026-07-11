@@ -16,8 +16,8 @@ export type PlanTier = 'free' | 'pro';
 // viola las políticas de pagos; se muestra contacto en su lugar.
 export const STORE_BUILD = process.env.EXPO_PUBLIC_STORE_BUILD === '1';
 
-export const STRIPE_LINK_MONTHLY = 'https://buy.stripe.com/test_PEGA_EL_MENSUAL';
-export const STRIPE_LINK_YEARLY = 'https://buy.stripe.com/test_PEGA_EL_ANUAL';
+export const STRIPE_LINK_MONTHLY = 'https://buy.stripe.com/test_cNieVc12V0P0dOscggcEw00';
+export const STRIPE_LINK_YEARLY = 'https://buy.stripe.com/test_9B66oG26ZcxI5hW944cEw01';
 
 // Límites del plan gratuito (espejo de lo que valida el servidor)
 export const FREE_MAX_EMPLOYEES = 3;

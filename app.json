@@ -18,7 +18,9 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A1B0C"
       },
-      "permissions": []
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.jacarandalab.kahve",
@@ -32,6 +34,13 @@
           "photosPermission": "Kahve usa tus fotos para ilustrar los productos de tu menú."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8d185c21-277e-4f9b-976b-fd44c988a9b0"
+      }
+    },
+    "owner": "edgar_conrado"
   }
 }

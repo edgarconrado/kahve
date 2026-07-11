@@ -32,11 +32,6 @@
           "photosPermission": "Kahve usa tus fotos para ilustrar los productos de tu menú."
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "SE_LLENA_SOLO_CON_EAS_INIT"
-      }
-    }
+    ]
   }
 }

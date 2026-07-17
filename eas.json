@@ -6,7 +6,7 @@
       "android": { "buildType": "apk" },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://puzodvufrezblxgmzmxy.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1em9kdnVmcmV6Ymx4Z216bXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTA0NjAsImV4cCI6MjA5OTEyNjQ2MH0.1uq1G8z_7o1npDhkKtZ5o8mEJkZ82V7RbMQFAOD-Ci0"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "PEGA_TU_ANON_KEY"
       }
     },
     "production": {
@@ -14,7 +14,7 @@
       "android": { "buildType": "app-bundle" },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://puzodvufrezblxgmzmxy.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1em9kdnVmcmV6Ymx4Z216bXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NTA0NjAsImV4cCI6MjA5OTEyNjQ2MH0.1uq1G8z_7o1npDhkKtZ5o8mEJkZ82V7RbMQFAOD-Ci0",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "PEGA_TU_ANON_KEY",
         "EXPO_PUBLIC_STORE_BUILD": "1"
       }
     }

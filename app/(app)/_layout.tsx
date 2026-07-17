@@ -77,6 +77,10 @@ export default function AppLayout() {
 
       {/* Rutas navegables pero sin pestaña propia */}
       <Tabs.Screen name="charge" options={{ title: 'Cobrar', href: null }} />
+      <Tabs.Screen name="privacidad"
+        options={{ title: 'Aviso de Privacidad', href: null, headerShown: false }} />
+      <Tabs.Screen name="terminos"
+        options={{ title: 'Términos de Uso', href: null, headerShown: false }} />
       <Tabs.Screen name="upgrade"
         options={{ title: 'Kahve Pro', href: null }} />
       <Tabs.Screen name="board"

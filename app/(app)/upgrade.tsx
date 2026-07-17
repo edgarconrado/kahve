@@ -73,6 +73,38 @@ export default function Upgrade() {
         ))}
       </View>
 
+      {tier === 'pro' && !isTrial && !STORE_BUILD && (
+        <Pressable style={styles.manageButton} onPress={async () => {
+          const { data, error } = await supabase.functions.invoke('create-portal-session');
+
+          // Diagnóstico: mostrar el motivo real en vez de un mensaje genérico
+          let failure: string | null = data?.error ?? null;
+          if (error && !failure) {
+            const anyErr = error as any;
+            if (anyErr?.context?.text) {
+              try {
+                const raw = await anyErr.context.text();
+                try { failure = JSON.parse(raw).error ?? raw; }
+                catch { failure = raw; }
+              } catch { failure = error.message; }
+            } else {
+              failure = error.message;
+            }
+          }
+
+          if (failure || !data?.url) {
+            Alert.alert('No se pudo abrir', failure ?? 'Respuesta sin URL del portal.');
+            return;
+          }
+          Linking.openURL(data.url);
+        }}>
+          <Ionicons name="settings-outline" size={16} color="#4A1B0C" />
+          <Text style={styles.manageButtonText}>
+            Administrar o cancelar mi suscripción
+          </Text>
+        </Pressable>
+      )}
+
       {(tier === 'free' || isTrial) && STORE_BUILD && (
         <Text style={styles.hint}>
           Para activar Kahve Pro, escríbenos por WhatsApp y con gusto te
@@ -135,4 +167,10 @@ const styles = StyleSheet.create({
   planPer: { fontSize: 13, fontWeight: '600', color: '#888' },
   planLabel: { fontSize: 12, color: '#888', marginTop: 2 },
   hint: { fontSize: 11, color: '#999', textAlign: 'center', lineHeight: 16 },
+  manageButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#ddd', borderRadius: 12,
+    paddingVertical: 14, marginTop: 4,
+  },
+  manageButtonText: { fontSize: 13, color: '#4A1B0C', fontWeight: '600' },
 });

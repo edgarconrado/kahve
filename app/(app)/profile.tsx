@@ -45,6 +45,32 @@ export default function Profile() {
   const [pin1, setPin1] = useState('');
   const [pin2, setPin2] = useState('');
   const [busy, setBusy] = useState(false);
+  const [org, setOrg] = useState<{ name: string; slug: string } | null>(null);
+  const [branch, setBranch] = useState<{ name: string; address: string | null } | null>(null);
+
+  // Datos de la cafetería (organización y, si aplica, sucursal del empleado)
+  useFocusEffect(
+    useCallback(() => {
+      if (!employee) return;
+      supabase
+        .from('organizations')
+        .select('name, slug')
+        .eq('id', employee.organization_id)
+        .single()
+        .then(({ data }) => setOrg(data));
+
+      if (employee.branch_id) {
+        supabase
+          .from('branches')
+          .select('name, address')
+          .eq('id', employee.branch_id)
+          .single()
+          .then(({ data }) => setBranch(data));
+      } else {
+        setBranch(null); // admin sin sucursal fija = acceso a todas
+      }
+    }, [employee?.organization_id, employee?.branch_id]),
+  );
 
   // Estadísticas del turno actual (órdenes creadas por este empleado)
   useFocusEffect(
@@ -165,6 +191,22 @@ export default function Profile() {
       </View>
 
       {/* Permisos del rol */}
+      {org && (
+        <View style={styles.orgCard}>
+          <View style={styles.orgIcon}>
+            <Ionicons name="storefront-outline" size={20} color="#4A1B0C" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.orgName}>{org.name}</Text>
+            <Text style={styles.orgMeta}>
+              {branch
+                ? `${branch.name}${branch.address ? ` · ${branch.address}` : ''}`
+                : 'Todas las sucursales'}
+            </Text>
+          </View>
+        </View>
+      )}
+
       <Text style={styles.sectionTitle}>Permisos de tu rol</Text>
       <View style={styles.permBox}>
         {PERMISSION_LABELS.map(([perm, label]) => {
@@ -209,6 +251,18 @@ export default function Profile() {
           <Text style={styles.actionText}>
             {shift ? 'Corte de caja' : 'Abrir turno'}
           </Text>
+          <Ionicons name="chevron-forward" size={16} color="#bbb" />
+        </Pressable>
+        <Pressable style={styles.actionRow}
+          onPress={() => router.push('/(app)/privacidad')}>
+          <Ionicons name="shield-checkmark-outline" size={18} color="#666" />
+          <Text style={styles.actionText}>Aviso de Privacidad</Text>
+          <Ionicons name="chevron-forward" size={16} color="#bbb" />
+        </Pressable>
+        <Pressable style={styles.actionRow}
+          onPress={() => router.push('/(app)/terminos')}>
+          <Ionicons name="document-text-outline" size={18} color="#666" />
+          <Text style={styles.actionText}>Términos de Uso</Text>
           <Ionicons name="chevron-forward" size={16} color="#bbb" />
         </Pressable>
         <Pressable style={styles.actionRow} onPress={handleSignOut}>
@@ -320,6 +374,17 @@ const styles = StyleSheet.create({
     paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#f2f2f2',
   },
   actionText: { flex: 1, fontSize: 14, color: '#222' },
+  orgCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderWidth: 1, borderColor: '#eee', borderRadius: 14,
+    padding: 14, marginBottom: 4,
+  },
+  orgIcon: {
+    width: 40, height: 40, borderRadius: 12, backgroundColor: '#FAECE7',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  orgName: { fontSize: 15, fontWeight: '700', color: '#222' },
+  orgMeta: { fontSize: 12, color: '#888', marginTop: 2 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,

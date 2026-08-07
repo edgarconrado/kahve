@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, Modal,
+  Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, Modal, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -12,6 +12,8 @@ import { useOpenShift } from '../../lib/shift';
 const BILLS = [1000, 500, 200, 100, 50, 20] as const;
 
 export default function ShiftScreen() {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
   const { employee } = useAuth();
   const { shift, refresh } = useOpenShift(employee);
   const [openingCash, setOpeningCash] = useState('500');
@@ -233,7 +235,7 @@ export default function ShiftScreen() {
 
   if (!shift) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
         <Text style={styles.title}>Abrir turno</Text>
         <Text style={styles.label}>Fondo de caja inicial</Text>
         <TextInput placeholderTextColor="#9A9A9A"
@@ -261,7 +263,7 @@ export default function ShiftScreen() {
     >
     <ScrollView
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.container}>
+      contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
       <Text style={styles.title}>Cerrar turno</Text>
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
@@ -519,6 +521,7 @@ export default function ShiftScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 10, paddingBottom: 40 },
+  containerWide: { maxWidth: 640, width: '100%', alignSelf: 'center' },
   title: { fontSize: 20, fontWeight: '600' },
   label: { fontSize: 13, color: '#666', marginTop: 6 },
   input: {

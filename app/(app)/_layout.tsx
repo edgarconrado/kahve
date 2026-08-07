@@ -7,8 +7,8 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const icon =
   (name: IoniconName, nameOutline: IoniconName) =>
-  ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
-    <Ionicons name={focused ? name : nameOutline} size={size} color={color} />;
+    ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
+      <Ionicons name={focused ? name : nameOutline} size={size} color={color} />;
 
 export default function AppLayout() {
   const { session, employee, loading } = useAuth();
@@ -75,17 +75,30 @@ export default function AppLayout() {
         }}
       />
 
+      <Tabs.Screen name="admin/supplies"
+        options={{
+          title: 'Insumos',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cube-outline" size={size} color={color} />
+          ),
+          href: can(employee?.role ?? null, 'menu.edit') ? undefined : null,
+        }} />
+
       {/* Rutas navegables pero sin pestaña propia */}
       <Tabs.Screen name="charge" options={{ title: 'Cobrar', href: null }} />
       <Tabs.Screen name="privacidad"
         options={{ title: 'Aviso de Privacidad', href: null, headerShown: false }} />
       <Tabs.Screen name="terminos"
         options={{ title: 'Términos de Uso', href: null, headerShown: false }} />
+      <Tabs.Screen name="printer"
+        options={{ title: 'Impresora', href: null, headerShown: false }} />
       <Tabs.Screen name="upgrade"
         options={{ title: 'Kahve Pro', href: null }} />
       <Tabs.Screen name="board"
         options={{ title: 'Órdenes listas', href: null, headerShown: false }} />
       <Tabs.Screen name="shift" options={{ title: 'Turno', href: null }} />
+
+
     </Tabs>
   );
 }

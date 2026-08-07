@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
-  Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
+  Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -40,6 +40,8 @@ const MATRIX_ROLES: { role: EmployeeRole; short: string }[] = [
 
 export default function Team() {
   const { employee: me } = useAuth();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
   const { tier } = usePlan(me);
   const [team, setTeam] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -148,7 +150,10 @@ export default function Team() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#fff' }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 96, gap: 8 }}>
+      contentContainerStyle={[
+        { padding: 16, paddingBottom: 96, gap: 8 },
+        isWide && { maxWidth: 640, width: '100%', alignSelf: 'center' },
+      ]}>
 
       <Text style={styles.sectionTitle}>Empleados activos ({team.length})</Text>
       {team.map((item) => {

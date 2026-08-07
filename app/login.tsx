@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
 import {
-  KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View,
+  Image, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  StyleSheet, Text, TextInput, View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../lib/auth';
 
 export default function Login() {
@@ -31,73 +33,133 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Text style={styles.title}>Kahve</Text>
-      <Text style={styles.subtitle}>Inicia sesión para abrir tu turno</Text>
-
-      <TextInput placeholderTextColor="#9A9A9A"
-        style={styles.input}
-        placeholder="Correo"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput placeholderTextColor="#9A9A9A"
-        style={styles.input}
-        placeholder="PIN"
-        secureTextEntry
-        keyboardType="number-pad"
-        maxLength={6}
-        value={pin}
-        onChangeText={setPin}
-      />
-
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      <Pressable
-        style={[styles.button, busy && { opacity: 0.6 }]}
-        disabled={busy || !email || pin.length < 4}
-        onPress={handleSignIn}
+    <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={styles.buttonText}>{busy ? 'Entrando…' : 'Entrar'}</Text>
-      </Pressable>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Panel superior de marca */}
+          <View style={styles.hero}>
+            <View style={styles.logoRing}>
+              <Image source={require('../assets/icon.png')} style={styles.logo} />
+            </View>
+            <Text style={styles.title}>Kahve</Text>
+            <Text style={styles.tagline}>Punto de venta para cafeterías</Text>
+          </View>
 
-      <Pressable onPress={() => router.push('/register')} hitSlop={10}>
-        <Text style={styles.registerLink}>
-          ¿Nuevo en Kahve? Registra tu cafetería
-        </Text>
-      </Pressable>
+          {/* Tarjeta del formulario */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Bienvenido de vuelta</Text>
+            <Text style={styles.cardSubtitle}>Inicia sesión para abrir tu turno</Text>
 
-      <Text style={styles.version}>Kahve · v1.2</Text>
-    </KeyboardAvoidingView>
+            <View style={styles.inputWrap}>
+              <Ionicons name="mail-outline" size={18} color="#B27358" style={styles.inputIcon} />
+              <TextInput
+                placeholderTextColor="#B0A296"
+                style={styles.input}
+                placeholder="Correo"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+
+            <View style={styles.inputWrap}>
+              <Ionicons name="lock-closed-outline" size={18} color="#B27358" style={styles.inputIcon} />
+              <TextInput
+                placeholderTextColor="#B0A296"
+                style={styles.input}
+                placeholder="PIN"
+                secureTextEntry
+                keyboardType="number-pad"
+                maxLength={6}
+                value={pin}
+                onChangeText={setPin}
+              />
+            </View>
+
+            {error && (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle-outline" size={15} color="#A32D2D" />
+                <Text style={styles.error}>{error}</Text>
+              </View>
+            )}
+
+            <Pressable
+              style={[styles.button, (busy || !email || pin.length < 4) && { opacity: 0.5 }]}
+              disabled={busy || !email || pin.length < 4}
+              onPress={handleSignIn}
+            >
+              <Text style={styles.buttonText}>{busy ? 'Entrando…' : 'Entrar'}</Text>
+              {!busy && <Ionicons name="arrow-forward" size={17} color="#FAECE7" />}
+            </Pressable>
+
+            <Pressable onPress={() => router.push('/register')} hitSlop={10} style={{ marginTop: 18 }}>
+              <Text style={styles.registerLink}>
+                ¿Nuevo en Kahve? <Text style={{ fontWeight: '700' }}>Registra tu cafetería</Text>
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.version}>Kahve · v1.0.5</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
-  title: { fontSize: 34, fontWeight: '600', textAlign: 'center', color: '#4A1B0C' },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 12 },
+  root: { flex: 1, backgroundColor: '#4A1B0C' },
+  scroll: { flexGrow: 1 },
+  hero: {
+    alignItems: 'center', justifyContent: 'center',
+    paddingTop: 76, paddingBottom: 40,
+  },
+  logoRing: {
+    width: 92, height: 92, borderRadius: 26,
+    backgroundColor: 'rgba(250,236,231,0.12)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+  },
+  logo: { width: 68, height: 68, borderRadius: 18 },
+  title: {
+    fontSize: 34, fontWeight: '800', color: '#FAECE7', letterSpacing: 0.5,
+  },
+  tagline: { fontSize: 13, color: '#F0997B', marginTop: 4 },
+  card: {
+    backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24, flex: 1,
+  },
+  cardTitle: { fontSize: 19, fontWeight: '700', color: '#222' },
+  cardSubtitle: { fontSize: 13, color: '#888', marginTop: 3, marginBottom: 24 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.3, borderColor: '#EFE4DD', borderRadius: 12,
+    paddingHorizontal: 14, marginBottom: 12, backgroundColor: '#FDFAF8',
+  },
+  inputIcon: { marginTop: 1 },
   input: {
-    color: '#1F1F1F',
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 12, fontSize: 16,
+    flex: 1, color: '#1F1F1F', paddingVertical: 13, fontSize: 15,
   },
-  error: { color: '#A32D2D', textAlign: 'center' },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FCEBEB', borderRadius: 10,
+    paddingVertical: 9, paddingHorizontal: 12, marginBottom: 4, marginTop: 2,
+  },
+  error: { color: '#A32D2D', fontSize: 12.5, flex: 1 },
   button: {
-    backgroundColor: '#4A1B0C', borderRadius: 10,
-    paddingVertical: 14, alignItems: 'center', marginTop: 4,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#4A1B0C', borderRadius: 12,
+    paddingVertical: 15, marginTop: 10,
   },
-  buttonText: { color: '#FAECE7', fontSize: 16, fontWeight: '600' },
-  registerLink: {
-    textAlign: 'center', color: '#4A1B0C', fontSize: 13,
-    fontWeight: '600', marginTop: 12,
-  },
+  buttonText: { color: '#FAECE7', fontSize: 15.5, fontWeight: '700' },
+  registerLink: { textAlign: 'center', color: '#7A6a60', fontSize: 13 },
   version: {
-    position: 'absolute', bottom: 24, alignSelf: 'center',
-    fontSize: 11, color: '#bbb',
+    textAlign: 'center', fontSize: 11, color: 'rgba(250,236,231,0.35)',
+    marginTop: 10, marginBottom: 6,
   },
 });

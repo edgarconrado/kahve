@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
+  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -36,6 +36,8 @@ interface ClosedShift {
 
 export default function Profile() {
   const { employee, signOut } = useAuth();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
   const { tier, isTrial, daysLeft } = usePlan(employee);
   const { shift } = useOpenShift(employee);
   const [stats, setStats] = useState({ orders: 0, sold: 0, cancelled: 0 });
@@ -141,7 +143,7 @@ export default function Profile() {
     });
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
       {/* Encabezado */}
       <View style={styles.header}>
         <View style={styles.avatar}>
@@ -236,6 +238,12 @@ export default function Profile() {
             <Ionicons name="chevron-forward" size={16} color="#bbb" />
           </Pressable>
         )}
+        <Pressable style={styles.actionRow}
+          onPress={() => router.push('/(app)/printer')}>
+          <Ionicons name="print-outline" size={18} color="#666" />
+          <Text style={styles.actionText}>Impresora</Text>
+          <Ionicons name="chevron-forward" size={16} color="#bbb" />
+        </Pressable>
         <Pressable style={styles.actionRow} onPress={() => setShowPin(true)}>
           <Ionicons name="lock-closed-outline" size={18} color="#666" />
           <Text style={styles.actionText}>Cambiar PIN</Text>
@@ -345,6 +353,7 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   container: { padding: 16, paddingBottom: 40, gap: 8, backgroundColor: '#fff' },
+  containerWide: { maxWidth: 640, width: '100%', alignSelf: 'center' },
   header: { alignItems: 'center', gap: 4, paddingVertical: 12 },
   avatar: {
     width: 72, height: 72, borderRadius: 36, backgroundColor: '#FAECE7',

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
+  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { usePlan, proFeatureAlert } from '../../lib/plan';
+import { printReceipt } from '../../lib/printer';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useOpenShift } from '../../lib/shift';
@@ -22,6 +23,10 @@ function quickAmounts(total: number): number[] {
 }
 
 export default function Charge() {
+  const { width } = useWindowDimensions();
+  // En pantallas anchas (tablets, landscape) el formulario se centra con un
+  // ancho máximo cómodo de leer, en vez de estirarse de borde a borde.
+  const isWide = width >= 700;
   const { employee } = useAuth();
   const { shift } = useOpenShift(employee);
   const cart = useCart();
@@ -136,6 +141,42 @@ export default function Charge() {
     }
   };
 
+  const printCurrentTicket = async (order: any, lines: typeof cart.lines, info: {
+    total: number; tip: number; discount: number; tax: number;
+    method: string; received: number | null; change: number | null;
+  }) => {
+    try {
+      const { data: org } = await supabase
+        .from('organizations').select('name').eq('id', employee!.organization_id).single();
+      const methodLabel = info.method === 'tarjeta' ? 'Tarjeta'
+        : info.method === 'transferencia' ? 'Transferencia' : 'Efectivo';
+      await printReceipt({
+        orgName: org?.name ?? 'Kahve',
+        orderNumber: order.order_number,
+        customerName: order.customer_name ?? null,
+        createdAt: new Date(),
+        lines: lines.map((l) => ({
+          quantity: l.quantity,
+          name: l.product.name,
+          modifiers: l.modifiers.map((m) => m.name),
+          total: lineUnitPrice(l) * l.quantity,
+        })),
+        discount: info.discount,
+        tax: info.tax,
+        tip: info.tip,
+        total: info.total,
+        method: methodLabel,
+        received: info.received,
+        change: info.change,
+      });
+    } catch (e: any) {
+      Alert.alert(
+        'No se pudo imprimir',
+        e?.message ?? 'Revisa que la impresora esté encendida y conectada.',
+      );
+    }
+  };
+
   const confirm = async () => {
     if (!employee || !shift) return;
     setBusy(true);
@@ -187,6 +228,11 @@ export default function Charge() {
             price_delta: m.price_delta,
           })),
         );
+        // Insumos extra de los modificadores elegidos (ej. "Leche
+        // deslactosada"), sumados al costo ya congelado de la receta base.
+        await supabase.rpc('consume_modifier_supplies', {
+          p_order_item_id: item.id,
+        });
       }
     }
 
@@ -215,6 +261,12 @@ export default function Charge() {
       'Pago registrado. Enviada a preparación.',
       [
         {
+          text: 'Imprimir',
+          onPress: () => {
+            printCurrentTicket(order, ticketLines, ticketInfo).finally(() => router.back());
+          },
+        },
+        {
           text: 'Enviar ticket',
           onPress: () => {
             if (tier === 'free') {
@@ -238,7 +290,10 @@ export default function Charge() {
     >
     <ScrollView
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.container}>
+      contentContainerStyle={[
+        styles.container,
+        isWide && styles.containerWide,
+      ]}>
       <View style={styles.totalBox}>
         <Text style={styles.totalLabel}>Total a cobrar</Text>
         <Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text>
@@ -466,6 +521,7 @@ export default function Charge() {
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 10 },
+  containerWide: { maxWidth: 560, width: '100%', alignSelf: 'center' },
   totalBox: {
     backgroundColor: '#4A1B0C', borderRadius: 14, padding: 18, alignItems: 'center',
   },

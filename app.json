@@ -2,8 +2,8 @@
   "expo": {
     "name": "Kahve",
     "slug": "kahve",
-    "version": "1.0.1",
-    "orientation": "portrait",
+    "version": "1.0.7",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "kahve",
@@ -18,7 +18,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A1B0C"
       },
-      "permissions": []
+      "permissions": [
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.jacarandalab.kahve",

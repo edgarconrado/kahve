@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  FlatList, Image, Pressable, StyleSheet, Text, View, useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
@@ -22,6 +24,9 @@ const TINTS = [
 ];
 
 export default function Pos() {
+  const { width } = useWindowDimensions();
+  // Más columnas cuando hay más ancho (tablets y landscape).
+  const numColumns = width >= 900 ? 4 : width >= 640 ? 3 : 2;
   const { employee } = useAuth();
   const { shift, loading } = useOpenShift(employee);
   const cart = useCart();
@@ -127,7 +132,8 @@ export default function Pos() {
       <FlatList
         data={visible}
         keyExtractor={(p) => p.id}
-        numColumns={2}
+        key={numColumns} // FlatList no permite cambiar numColumns sin remontar
+        numColumns={numColumns}
         columnWrapperStyle={{ gap: 12 }}
         contentContainerStyle={{ gap: 12, padding: 16, paddingTop: 8 }}
         renderItem={({ item, index }) => {

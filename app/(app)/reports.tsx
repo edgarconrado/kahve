@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
-  Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View,
+  Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
@@ -35,6 +35,19 @@ interface Ticket {
   order_items: { product_name: string; quantity: number }[];
   payments: { method: string; card_type: string | null; amount: number }[];
 }
+interface SupplyCost { total_sales: number; total_supply_cost: number; cost_percent: number }
+interface LowStockItem {
+  id: string; name: string; unit: string;
+  current_stock: number; low_stock_threshold: number;
+}
+interface WasteRow { supply_name: string; quantity: number; unit: string; estimated_cost: number }
+interface SupplyDetailRow {
+  supply_id: string; name: string; unit: string;
+  purchased_qty: number; purchased_cost: number;
+  consumed_qty: number; consumed_cost: number;
+  wasted_qty: number; wasted_cost: number;
+  current_stock: number;
+}
 
 const PAYMENT_META: Record<string, { label: string; color: string }> = {
   'efectivo':        { label: 'Efectivo',        color: '#1D9E75' },
@@ -67,6 +80,8 @@ function rangeFor(period: Period): { from: Date; to: Date } {
 
 export default function Reports() {
   const { employee } = useAuth();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
   const { tier } = usePlan(employee);
   const [period, setPeriod] = useState<Period>('hoy');
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -78,6 +93,15 @@ export default function Reports() {
   const [showTickets, setShowTickets] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [supplyCost, setSupplyCost] = useState<SupplyCost | null>(null);
+  const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
+  const [waste, setWaste] = useState<WasteRow[]>([]);
+  const [supplyDetail, setSupplyDetail] = useState<SupplyDetailRow[]>([]);
+  const [showSupplyDetail, setShowSupplyDetail] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [exportingDetail, setExportingDetail] = useState(false);
+
+  const isAdmin = employee?.role === 'admin';
 
   const load = useCallback(async () => {
     const { from, to } = rangeFor(period);
@@ -150,9 +174,37 @@ export default function Reports() {
       .order('created_at', { ascending: false })
       .limit(100);
     setTickets((tix as Ticket[]) ?? []);
-  }, [period]);
+
+    // Insumos: costo del periodo, stock bajo y mermas (Pro, solo admin).
+    // El servidor ya filtra por rol y por plan; aquí evitamos la llamada
+    // de más cuando ni siquiera calificas, pero si algo cambia del lado
+    // del servidor, simplemente llegarían filas vacías.
+    if (isAdmin && tier === 'pro') {
+      const [{ data: sc }, { data: ls }, { data: w }] = await Promise.all([
+        supabase.rpc('report_supply_cost_summary', { p_from: pFrom, p_to: pTo }),
+        supabase.rpc('report_low_stock'),
+        supabase.rpc('report_waste_summary', { p_from: pFrom, p_to: pTo }),
+      ]);
+      setSupplyCost(sc?.[0] ?? null);
+      setLowStock((ls as LowStockItem[]) ?? []);
+      setWaste((w as WasteRow[]) ?? []);
+    } else {
+      setSupplyCost(null); setLowStock([]); setWaste([]);
+    }
+  }, [period, isAdmin, tier]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const openSupplyDetail = async () => {
+    setShowSupplyDetail(true);
+    setLoadingDetail(true);
+    const { from, to } = rangeFor(period);
+    const { data } = await supabase.rpc('report_supply_detail', {
+      p_from: isoDate(from), p_to: isoDate(to),
+    });
+    setSupplyDetail((data as SupplyDetailRow[]) ?? []);
+    setLoadingDetail(false);
+  };
 
   const paymentsTotal = payments.reduce((a, p) => a + Number(p.total), 0);
   const maxBar = Math.max(...bars.map((b) => b.total), 1);
@@ -183,6 +235,10 @@ export default function Reports() {
       const tops = top.map((t, i) => `
         <tr><td>${i + 1}. ${t.product_name}</td><td>${t.units}</td>
         <td style="text-align:right">$${Number(t.revenue).toFixed(2)}</td></tr>`).join('');
+      const supplySection = supplyCost ? `
+          <h2>Costo de insumos</h2>
+          <p>Total en insumos: $${Number(supplyCost.total_supply_cost).toFixed(2)}
+            (${Number(supplyCost.cost_percent).toFixed(1)}% de las ventas)</p>` : '';
 
       const html = `
         <html><head><meta charset="utf-8"><style>
@@ -209,6 +265,7 @@ export default function Reports() {
           </div>
           <h2>Pagos</h2><table>${pays}</table>
           <h2>Más vendidos</h2><table>${tops}</table>
+          ${supplySection}
           <h2>Tickets (${tickets.length})</h2>
           <table>
             <tr><th>#</th><th>Fecha</th><th>Cliente</th><th>Pago</th>
@@ -234,7 +291,7 @@ export default function Reports() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
       {/* Selector de periodo + exportar */}
       <View style={styles.topRow}>
         <View style={styles.periodRow}>
@@ -380,6 +437,81 @@ export default function Reports() {
         </View>
       )}
 
+      {/* Insumos: costo, stock bajo y mermas (Pro, solo admin) */}
+      {isAdmin && (
+        <>
+          <Text style={styles.sectionTitle}>Insumos</Text>
+          {tier === 'free' ? (
+            <Pressable style={styles.lockedRow}
+              onPress={() => proFeatureAlert('El costo de insumos, alertas de stock y mermas')}>
+              <Ionicons name="lock-closed-outline" size={15} color="#aaa" />
+              <Text style={styles.lockedRowText}>
+                Costo de insumos, stock bajo y mermas (Pro)
+              </Text>
+            </Pressable>
+          ) : (
+            <>
+              {supplyCost && (
+                <View style={styles.chartCard}>
+                  <View style={styles.supplyCostRow}>
+                    <Text style={styles.supplyCostLabel}>Costo de insumos</Text>
+                    <Text style={styles.supplyCostValue}>
+                      ${Number(supplyCost.total_supply_cost).toFixed(2)}
+                    </Text>
+                  </View>
+                  <Text style={styles.supplyCostPercent}>
+                    {Number(supplyCost.cost_percent).toFixed(1)}% de tus ventas del periodo
+                  </Text>
+                </View>
+              )}
+
+              {lowStock.length > 0 && (
+                <View style={[styles.chartCard, { borderColor: '#F3D4A0', backgroundColor: '#FFFBF2' }]}>
+                  <Text style={styles.subheading}>
+                    <Ionicons name="warning-outline" size={13} color="#854F0B" /> Stock bajo
+                  </Text>
+                  {lowStock.map((s) => (
+                    <View key={s.id} style={styles.lowStockRow}>
+                      <Text style={styles.lowStockName}>{s.name}</Text>
+                      <Text style={styles.lowStockValue}>
+                        {s.current_stock.toLocaleString('es-MX')} {s.unit}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {waste.length > 0 && (
+                <View style={styles.chartCard}>
+                  <Text style={styles.subheading}>Mermas del periodo</Text>
+                  {waste.map((w) => (
+                    <View key={w.supply_name} style={styles.lowStockRow}>
+                      <Text style={styles.lowStockName}>{w.supply_name}</Text>
+                      <Text style={styles.wasteValue}>
+                        {w.quantity.toLocaleString('es-MX')} {w.unit} · ${Number(w.estimated_cost).toFixed(2)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {!supplyCost && lowStock.length === 0 && waste.length === 0 && (
+                <Text style={styles.empty}>
+                  Sin datos de insumos todavía. Da de alta tus insumos y arma recetas
+                  desde Menú para empezar a ver esta sección.
+                </Text>
+              )}
+
+              <Pressable style={styles.ticketsButton} onPress={openSupplyDetail}>
+                <Ionicons name="list-outline" size={17} color="#4A1B0C" />
+                <Text style={styles.ticketsButtonText}>Ver detalle por insumo</Text>
+                <Ionicons name="chevron-forward" size={15} color="#4A1B0C" />
+              </Pressable>
+            </>
+          )}
+        </>
+      )}
+
       {/* Tickets */}
       <Pressable style={styles.ticketsButton} onPress={() => setShowTickets(true)}>
         <Ionicons name="receipt-outline" size={17} color="#4A1B0C" />
@@ -441,12 +573,119 @@ export default function Reports() {
           />
         </View>
       </Modal>
+
+      <Modal visible={showSupplyDetail} transparent animationType="slide"
+        onRequestClose={() => setShowSupplyDetail(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setShowSupplyDetail(false)} />
+        <View style={styles.sheet}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.sheetTitle, { flex: 1 }]}>
+              Insumos a detalle · {PERIOD_TITLE[period]}
+            </Text>
+            <Pressable
+              style={styles.detailExportButton}
+              disabled={exportingDetail || supplyDetail.length === 0}
+              onPress={async () => {
+                setExportingDetail(true);
+                try {
+                  const rows = supplyDetail.map((s) => `
+                    <tr>
+                      <td>${s.name}</td>
+                      <td style="text-align:right">${s.purchased_qty.toFixed(2)} ${s.unit}</td>
+                      <td style="text-align:right">$${s.purchased_cost.toFixed(2)}</td>
+                      <td style="text-align:right">${s.consumed_qty.toFixed(2)} ${s.unit}</td>
+                      <td style="text-align:right">$${s.consumed_cost.toFixed(2)}</td>
+                      <td style="text-align:right">${s.wasted_qty.toFixed(2)} ${s.unit}</td>
+                      <td style="text-align:right">$${s.wasted_cost.toFixed(2)}</td>
+                      <td style="text-align:right">${s.current_stock.toFixed(2)} ${s.unit}</td>
+                    </tr>`).join('');
+                  const html = `
+                    <html><head><meta charset="utf-8"><style>
+                      body { font-family: -apple-system, Helvetica, sans-serif; padding: 20px; color: #222; }
+                      h1 { color: #4A1B0C; margin-bottom: 0; font-size: 18px; }
+                      .sub { color: #777; margin-top: 4px; font-size: 12px; }
+                      table { width: 100%; border-collapse: collapse; font-size: 10.5px; margin-top: 14px; }
+                      td, th { padding: 5px 6px; border-bottom: 1px solid #f0f0f0; text-align: left; }
+                      th { color: #4A1B0C; }
+                    </style></head><body>
+                      <h1>Kahve · Insumos a detalle</h1>
+                      <div class="sub">${PERIOD_TITLE[period]} · generado el ${new Date().toLocaleString('es-MX')}</div>
+                      <table>
+                        <tr><th>Insumo</th><th>Comprado</th><th>$ compra</th>
+                          <th>Consumido</th><th>$ consumo</th>
+                          <th>Merma</th><th>$ merma</th><th>Stock actual</th></tr>
+                        ${rows}
+                      </table>
+                    </body></html>`;
+                  const { uri } = await Print.printToFileAsync({ html });
+                  if (await Sharing.isAvailableAsync()) {
+                    await Sharing.shareAsync(uri, {
+                      mimeType: 'application/pdf', dialogTitle: 'Compartir detalle de insumos',
+                      UTI: 'com.adobe.pdf',
+                    });
+                  }
+                } catch (e: any) {
+                  Alert.alert('Error al exportar', e?.message ?? '');
+                }
+                setExportingDetail(false);
+              }}>
+              <Ionicons name="share-outline" size={17}
+                color={supplyDetail.length === 0 ? '#ccc' : '#4A1B0C'} />
+            </Pressable>
+          </View>
+
+          {loadingDetail ? (
+            <Text style={styles.empty}>Cargando…</Text>
+          ) : supplyDetail.length === 0 ? (
+            <Text style={styles.empty}>Sin movimientos de insumos en este periodo.</Text>
+          ) : (
+            <FlatList
+              data={supplyDetail}
+              keyExtractor={(s) => s.supply_id}
+              contentContainerStyle={{ gap: 8, paddingBottom: 12 }}
+              renderItem={({ item }) => (
+                <View style={styles.detailCard}>
+                  <Text style={styles.detailName}>{item.name}</Text>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Comprado</Text>
+                    <Text style={styles.detailValue}>
+                      {item.purchased_qty.toLocaleString('es-MX')} {item.unit}
+                      {item.purchased_cost > 0 ? ` · $${item.purchased_cost.toFixed(2)}` : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Consumido en ventas</Text>
+                    <Text style={styles.detailValue}>
+                      {item.consumed_qty.toLocaleString('es-MX')} {item.unit}
+                      {item.consumed_cost > 0 ? ` · $${item.consumed_cost.toFixed(2)}` : ''}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Merma</Text>
+                    <Text style={[styles.detailValue, item.wasted_qty > 0 && { color: '#A32D2D' }]}>
+                      {item.wasted_qty.toLocaleString('es-MX')} {item.unit}
+                      {item.wasted_cost > 0 ? ` · $${item.wasted_cost.toFixed(2)}` : ''}
+                    </Text>
+                  </View>
+                  <View style={[styles.detailRow, { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 6, marginTop: 2 }]}>
+                    <Text style={[styles.detailLabel, { fontWeight: '700', color: '#333' }]}>Stock actual</Text>
+                    <Text style={[styles.detailValue, { fontWeight: '700', color: '#222' }]}>
+                      {item.current_stock.toLocaleString('es-MX')} {item.unit}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            />
+          )}
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 8, paddingBottom: 32, backgroundColor: '#fff' },
+  containerWide: { maxWidth: 640, width: '100%', alignSelf: 'center' },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   periodRow: { flexDirection: 'row', gap: 6, flex: 1 },
   periodChip: {
@@ -498,6 +737,34 @@ const styles = StyleSheet.create({
   },
   topBar: { height: '100%', backgroundColor: '#4A1B0C', borderRadius: 4 },
   topValue: { width: 76, fontSize: 11, color: '#666', textAlign: 'right' },
+  lockedRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 14,
+  },
+  lockedRowText: { fontSize: 12.5, color: '#999' },
+  supplyCostRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  supplyCostLabel: { fontSize: 13, color: '#555', fontWeight: '600' },
+  supplyCostValue: { fontSize: 20, fontWeight: '800', color: '#222' },
+  supplyCostPercent: { fontSize: 12, color: '#888' },
+  subheading: { fontSize: 12.5, fontWeight: '700', color: '#666' },
+  lowStockRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 4, borderTopWidth: 1, borderTopColor: '#f5f0e8',
+  },
+  lowStockName: { fontSize: 13, color: '#333', flex: 1 },
+  lowStockValue: { fontSize: 12.5, color: '#A32D2D', fontWeight: '700' },
+  wasteValue: { fontSize: 12.5, color: '#666' },
+  detailExportButton: {
+    width: 32, height: 32, borderRadius: 16, borderWidth: 1,
+    borderColor: '#eee', alignItems: 'center', justifyContent: 'center',
+  },
+  detailCard: {
+    borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 12, gap: 3,
+  },
+  detailName: { fontSize: 14, fontWeight: '700', color: '#222', marginBottom: 3 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  detailLabel: { fontSize: 12, color: '#888' },
+  detailValue: { fontSize: 12.5, color: '#444' },
   ticketsButton: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: '#4A1B0C', borderRadius: 12,

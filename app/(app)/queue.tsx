@@ -3,7 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useAudioPlayer } from 'expo-audio';
 import {
-  Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
+  Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -26,6 +26,9 @@ const LATE_MINUTES = 5;
 
 export default function Queue() {
   const { employee } = useAuth();
+  const { width } = useWindowDimensions();
+  // En tablets/landscape hay espacio para ver varias órdenes a la vez.
+  const numColumns = width >= 900 ? 3 : width >= 640 ? 2 : 1;
   const player = useAudioPlayer(require('../../assets/new-order.wav'));
   const { tier } = usePlan(employee);
   const [orders, setOrders] = useState<QueueOrder[]>([]);
@@ -185,6 +188,9 @@ export default function Queue() {
       <FlatList
         data={orders}
         keyExtractor={(o) => o.id}
+        key={numColumns} // FlatList exige remontar al cambiar numColumns
+        numColumns={numColumns}
+        columnWrapperStyle={numColumns > 1 ? { gap: 12 } : undefined}
         contentContainerStyle={{ padding: 16, paddingTop: 8, gap: 12 }}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
@@ -434,7 +440,7 @@ const styles = StyleSheet.create({
   emptyBox: { alignItems: 'center', gap: 8, marginTop: 60 },
   empty: { textAlign: 'center', color: '#888' },
   card: {
-    borderWidth: 1, borderColor: '#eee', borderRadius: 14, overflow: 'hidden',
+    flex: 1, borderWidth: 1, borderColor: '#eee', borderRadius: 14, overflow: 'hidden',
     backgroundColor: '#fff',
   },
   cardHeader: {

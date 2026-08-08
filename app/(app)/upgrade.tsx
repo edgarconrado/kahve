@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import {
   usePlan, STRIPE_LINK_MONTHLY, STRIPE_LINK_YEARLY, STORE_BUILD,
+  KAHVE_SUBSCRIBE_PAGE,
 } from '../../lib/plan';
 
 const BENEFITS = [
@@ -106,10 +107,26 @@ export default function Upgrade() {
       )}
 
       {(tier === 'free' || isTrial) && STORE_BUILD && (
-        <Text style={styles.hint}>
-          Para activar Kahve Pro, escríbenos por WhatsApp y con gusto te
-          ayudamos: +52 XX XXXX XXXX
-        </Text>
+        <>
+          <Text style={styles.storeHint}>
+            Para suscribirte, visita nuestra página de planes y precios —
+            ahí puedes elegir mensual o anual y completar tu pago de forma
+            segura.
+          </Text>
+          <Pressable
+            style={styles.webButton}
+            onPress={() => {
+              const url = slug
+                ? `${KAHVE_SUBSCRIBE_PAGE}?slug=${encodeURIComponent(slug)}`
+                : KAHVE_SUBSCRIBE_PAGE;
+              Linking.openURL(url);
+            }}
+          >
+            <Ionicons name="globe-outline" size={17} color="#4A1B0C" />
+            <Text style={styles.webButtonText}>Ver planes y precios</Text>
+            <Ionicons name="open-outline" size={15} color="#B27358" />
+          </Pressable>
+        </>
       )}
 
       {(tier === 'free' || isTrial) && !STORE_BUILD && (
@@ -167,6 +184,16 @@ const styles = StyleSheet.create({
   planPer: { fontSize: 13, fontWeight: '600', color: '#888' },
   planLabel: { fontSize: 12, color: '#888', marginTop: 2 },
   hint: { fontSize: 11, color: '#999', textAlign: 'center', lineHeight: 16 },
+  storeHint: {
+    fontSize: 13, color: '#555', textAlign: 'center',
+    lineHeight: 19, paddingHorizontal: 8, marginBottom: 4,
+  },
+  webButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1.5, borderColor: '#4A1B0C', borderRadius: 12,
+    paddingVertical: 15,
+  },
+  webButtonText: { fontSize: 14.5, color: '#4A1B0C', fontWeight: '700' },
   manageButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     borderWidth: 1, borderColor: '#ddd', borderRadius: 12,

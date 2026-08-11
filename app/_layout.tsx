@@ -1,4 +1,5 @@
 import CrashGuard from '../components/CrashGuard'; // primero: instala el handler
+import OfflineBanner from '../components/OfflineBanner';
 import { Stack } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { AuthProvider } from '../lib/auth';
@@ -28,6 +29,7 @@ export default function RootLayout() {
           <Stack.Screen name="register" />
           <Stack.Screen name="(app)" />
         </Stack>
+        <OfflineBanner />
       </AuthProvider>
     </CrashGuard>
   );

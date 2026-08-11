@@ -106,7 +106,7 @@ export default function Login() {
             </Pressable>
           </View>
 
-          <Text style={styles.version}>Kahve · v1.0.5</Text>
+          <Text style={styles.version}>Kahve · v1.0.8</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

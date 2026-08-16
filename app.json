@@ -41,6 +41,13 @@
         {
           "photosPermission": "Kahve usa tus fotos para ilustrar los productos de tu menú."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#4A1B0C"
+        }
       ]
     ],
     "extra": {

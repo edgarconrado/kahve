@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import {
   Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
@@ -12,6 +12,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useOpenShift } from '../../lib/shift';
 import { useCart, cartTotals, lineUnitPrice } from '../../store/cart';
+import { computePromotions, type PromotionRow } from '../../lib/promotions';
 import type { CardType, PaymentMethod } from '../../types/db';
 
 // Montos rápidos: redondeos hacia arriba útiles + billetes comunes
@@ -45,14 +46,34 @@ export default function Charge() {
   const [tip, setTip] = useState(0);
   const [customTip, setCustomTip] = useState('');
 
+  const [promotions, setPromotions] = useState<PromotionRow[]>([]);
+  useEffect(() => {
+    if (tier !== 'pro') { setPromotions([]); return; }
+    supabase
+      .from('promotions')
+      .select('id, name, scope, product_id, category_id, buy_quantity, discount_percent, is_active, trigger_product_id, trigger_quantity, reward_product_id')
+      .eq('is_active', true)
+      .then(({ data }) => setPromotions((data as PromotionRow[]) ?? []));
+  }, [tier]);
+
   const gross = cart.subtotal();
-  const discounted = Math.max(+(gross - discount).toFixed(2), 0);
+  // Las promociones se aplican SIEMPRE primero, automático — no cuentan
+  // contra el límite de descuento manual del cajero, porque no fue él
+  // quien decidió darlas.
+  const { totalSavings: promoDiscount, applied: appliedPromotions } = useMemo(
+    () => computePromotions(cart.lines, promotions),
+    [cart.lines, promotions],
+  );
+  const afterPromo = Math.max(+(gross - promoDiscount).toFixed(2), 0);
+  const discounted = Math.max(+(afterPromo - discount).toFixed(2), 0);
   const { subtotal, tax, total } = cartTotals(discounted);
   // La propina se suma al cobro pero NO es venta: viaja aparte en payments.tip
   const grandTotal = +(total + tip).toFixed(2);
 
-  // Cajero: máximo 10% de descuento; supervisor/admin sin límite
-  const maxDiscount = employee?.role === 'cajero' ? +(gross * 0.10).toFixed(2) : gross;
+  // Cajero: máximo 10% de descuento MANUAL adicional, calculado sobre lo
+  // que el cliente ya pagaría con la promoción aplicada (no sobre el
+  // precio de lista, para no darle al cajero más margen del que debería).
+  const maxDiscount = employee?.role === 'cajero' ? +(afterPromo * 0.10).toFixed(2) : afterPromo;
 
   const applyDiscount = (amount: number) => {
     const value = +amount.toFixed(2);
@@ -74,7 +95,8 @@ export default function Charge() {
   const canConfirm =
     cart.lines.length > 0 &&
     !busy &&
-    (method !== 'efectivo' || (received !== null && received >= grandTotal));
+    (method !== 'efectivo' || (received !== null && received >= grandTotal)) &&
+    (method !== 'plataforma' || reference.trim().length > 0);
 
   const shareTicket = async (order: any, lines: typeof cart.lines, info: {
     total: number; tip: number; discount: number; tax: number;
@@ -193,6 +215,7 @@ export default function Charge() {
         subtotal,
         tax,
         discount,
+        promo_discount: promoDiscount,
         total,
         created_by: employee.id,
         paid_at: new Date().toISOString(),
@@ -256,6 +279,21 @@ export default function Charge() {
 
     cart.clear();
     setBusy(false);
+
+    // Reiniciar TODO el formulario de cobro para la siguiente venta.
+    // Sin esto, si esta pantalla no se desmonta entre una venta y la
+    // siguiente (algunas configuraciones de navegación reutilizan la
+    // misma instancia), el monto recibido, el método de pago, la
+    // propina y el descuento de la venta anterior se quedaban pegados
+    // y aparecían de entrada en la venta nueva.
+    setMethod('efectivo');
+    setCardType('debito');
+    setReceived(null);
+    setReference('');
+    setDiscount(0);
+    setCustomDiscount('');
+    setTip(0);
+    setCustomTip('');
     Alert.alert(
       `Orden #${String(order.order_number).padStart(3, '0')}`,
       'Pago registrado. Enviada a preparación.',
@@ -299,12 +337,27 @@ export default function Charge() {
         <Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text>
         <Text style={styles.totalSub}>
           {[
+            promoDiscount > 0 ? `Promo −$${promoDiscount.toFixed(2)}` : null,
             discount > 0 ? `Descuento −$${discount.toFixed(2)}` : null,
             tip > 0 ? `Venta $${total.toFixed(2)} + propina $${tip.toFixed(2)}` : null,
             `IVA incluido $${tax.toFixed(2)}`,
           ].filter(Boolean).join(' · ')}
         </Text>
       </View>
+
+      {appliedPromotions.length > 0 && (
+        <View style={styles.promoBox}>
+          {appliedPromotions.map((p) => (
+            <View key={p.name} style={styles.promoRow}>
+              <Ionicons name="pricetag" size={14} color="#0F6E56" />
+              <Text style={styles.promoText}>
+                {p.name}{p.timesApplied > 1 ? ` ×${p.timesApplied}` : ''}
+              </Text>
+              <Text style={styles.promoAmount}>−${p.discountAmount.toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <Pressable style={styles.discountRow} onPress={() => setShowDiscount(true)}>
         <Ionicons name="pricetag-outline" size={16}
@@ -349,14 +402,15 @@ export default function Charge() {
 
       <Text style={styles.sectionTitle}>¿Cómo pagó el cliente?</Text>
       <View style={styles.methodRow}>
-        {(['efectivo', 'tarjeta', 'transferencia'] as PaymentMethod[]).map((m) => (
+        {(['efectivo', 'tarjeta', 'transferencia', 'plataforma'] as PaymentMethod[]).map((m) => (
           <Pressable
             key={m}
             style={[styles.methodButton, method === m && styles.methodSelected]}
             onPress={() => setMethod(m)}
           >
             <Text style={[styles.methodText, method === m && styles.methodTextSelected]}>
-              {m === 'efectivo' ? 'Efectivo' : m === 'tarjeta' ? 'Tarjeta' : 'Transf.'}
+              {m === 'efectivo' ? 'Efectivo' : m === 'tarjeta' ? 'Tarjeta'
+                : m === 'transferencia' ? 'Transf.' : 'Plataforma'}
             </Text>
           </Pressable>
         ))}
@@ -416,6 +470,33 @@ export default function Charge() {
           />
           <Text style={styles.hint}>
             Cobra en la terminal física y confirma aquí una vez aprobado.
+          </Text>
+        </>
+      )}
+
+      {method === 'plataforma' && (
+        <>
+          <Text style={styles.sectionTitle}>¿Cuál plataforma?</Text>
+          <View style={styles.methodRow}>
+            {['Uber Eats', 'Didi Food', 'Rappi'].map((p) => (
+              <Pressable key={p}
+                style={[styles.methodButton, reference === p && styles.methodSelected]}
+                onPress={() => setReference(p)}>
+                <Text style={[styles.methodText, reference === p && styles.methodTextSelected]}>
+                  {p}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput placeholderTextColor="#9A9A9A"
+            style={styles.input}
+            placeholder="...o escribe otra plataforma"
+            value={reference}
+            onChangeText={setReference}
+          />
+          <Text style={styles.hint}>
+            El pago ya lo procesó la plataforma; no se contará como efectivo
+            en el corte de caja.
           </Text>
         </>
       )}
@@ -528,6 +609,12 @@ const styles = StyleSheet.create({
   totalLabel: { color: '#F5C4B3', fontSize: 12 },
   totalValue: { color: '#FAECE7', fontSize: 32, fontWeight: '600' },
   totalSub: { color: '#F0997B', fontSize: 11, marginTop: 2 },
+  promoBox: {
+    backgroundColor: '#E1F5EE', borderRadius: 10, padding: 10, gap: 4,
+  },
+  promoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  promoText: { flex: 1, fontSize: 12.5, color: '#0F6E56', fontWeight: '600' },
+  promoAmount: { fontSize: 12.5, color: '#0F6E56', fontWeight: '700' },
   sectionTitle: { fontSize: 13, color: '#666', marginTop: 8 },
   methodRow: { flexDirection: 'row', gap: 8 },
   methodButton: {

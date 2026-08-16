@@ -54,6 +54,7 @@ const PAYMENT_META: Record<string, { label: string; color: string }> = {
   'tarjeta-debito':  { label: 'Tarjeta débito',  color: '#378ADD' },
   'tarjeta-credito': { label: 'Tarjeta crédito', color: '#7F77DD' },
   'transferencia':   { label: 'Transferencia',   color: '#B4B2A9' },
+  'plataforma':      { label: 'Plataforma',       color: '#E8590C' },
 };
 const paymentKey = (p: { method: string; card_type: string | null }) =>
   p.method === 'tarjeta' ? `tarjeta-${p.card_type}` : p.method;

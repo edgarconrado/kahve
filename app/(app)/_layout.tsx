@@ -65,10 +65,14 @@ export default function AppLayout() {
           tabBarIcon: icon('settings', 'settings-outline'),
         }}
       />
-      <Tabs.Screen name="admin/team" options={{ title: 'Equipo', href: null }} />
-      <Tabs.Screen name="admin/menu" options={{ title: 'Menú', href: null }} />
-      <Tabs.Screen name="admin/promotions" options={{ title: 'Promociones', href: null }} />
-      <Tabs.Screen name="admin/supplies" options={{ title: 'Insumos', href: null }} />
+      <Tabs.Screen name="admin/team"
+        options={{ title: 'Equipo', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/menu"
+        options={{ title: 'Menú', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/promotions"
+        options={{ title: 'Promociones', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/supplies"
+        options={{ title: 'Insumos', href: null, headerShown: false }} />
 
       <Tabs.Screen
         name="profile"

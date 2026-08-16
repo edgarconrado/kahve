@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable,
   ScrollView, StyleSheet, Switch, Text, TextInput, View,
@@ -178,8 +178,11 @@ export default function Promotions() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="pricetags-outline" size={22} color="#4A1B0C" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+            <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+          </Pressable>
+          <Ionicons name="pricetags-outline" size={20} color="#4A1B0C" />
           <Text style={styles.title}>Promociones</Text>
         </View>
       </View>

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable,
   StyleSheet, Switch, Text, TextInput, View,
@@ -164,7 +164,12 @@ export default function Supplies() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.header}>
-        <Text style={styles.title}>Insumos</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+            <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+          </Pressable>
+          <Text style={styles.title}>Insumos</Text>
+        </View>
         {lowStockCount > 0 && (
           <View style={styles.alertPill}>
             <Ionicons name="warning-outline" size={13} color="#854F0B" />

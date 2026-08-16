@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Switch,
   Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
@@ -322,6 +322,13 @@ export default function Menu() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={styles.screenHeader}>
+        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        </Pressable>
+        <Text style={styles.screenHeaderTitle}>Menú</Text>
+        <View style={{ width: 22 }} />
+      </View>
       <FlatList
         data={visibleProducts}
         keyExtractor={(p) => p.id}
@@ -598,6 +605,12 @@ export default function Menu() {
 }
 
 const styles = StyleSheet.create({
+  screenHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,

@@ -8,7 +8,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
-import { usePlan, proFeatureAlert } from '../../lib/plan';
+import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../lib/plan';
 
 type Period = 'hoy' | 'semana' | 'mes' | 'año';
 const PERIODS: { key: Period; label: string }[] = [
@@ -451,7 +451,7 @@ export default function Reports() {
               onPress={() => proFeatureAlert('El costo de insumos, alertas de stock y mermas')}>
               <Ionicons name="lock-closed-outline" size={15} color="#aaa" />
               <Text style={styles.lockedRowText}>
-                Costo de insumos, stock bajo y mermas (Pro)
+                {HIDE_PRO_UI ? 'Costo de insumos, stock bajo y mermas' : 'Costo de insumos, stock bajo y mermas (Pro)'}
               </Text>
             </Pressable>
           ) : (

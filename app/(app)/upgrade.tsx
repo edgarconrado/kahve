@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import {
   usePlan, STRIPE_LINK_MONTHLY, STRIPE_LINK_YEARLY, STORE_BUILD,
-  KAHVE_SUBSCRIBE_PAGE,
+  KAHVE_SUBSCRIBE_PAGE, HIDE_PRO_UI,
 } from '../../lib/plan';
 
 const BENEFITS = [
@@ -23,6 +23,15 @@ export default function Upgrade() {
   const { employee } = useAuth();
   const { tier, isTrial, daysLeft } = usePlan(employee);
   const [slug, setSlug] = useState<string | null>(null);
+
+  // Defensa adicional: esta pantalla no debería ser alcanzable en iOS
+  // (el enlace en Perfil ya está oculto), pero si por algún otro camino
+  // se llega aquí, no renderiza nada relacionado a compras — regresa
+  // de inmediato. Ver Guideline 3.1.1 de Apple.
+  useEffect(() => {
+    if (HIDE_PRO_UI) router.back();
+  }, []);
+  if (HIDE_PRO_UI) return null;
 
   useFocusEffect(
     useCallback(() => {

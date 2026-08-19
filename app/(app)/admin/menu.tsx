@@ -10,7 +10,7 @@ import { decode } from 'base64-arraybuffer';
 import { Image } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
-import { usePlan, proFeatureAlert } from '../../../lib/plan';
+import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
 import type { Modifier, Product } from '../../../types/db';
 import RecipeEditor from '../../../components/RecipeEditor';
 
@@ -463,7 +463,7 @@ export default function Menu() {
               )}
               <Text style={[styles.imagePickerText, tier === 'free' && { color: '#999' }]}>
                 {imageUri ? 'Cambiar foto'
-                  : tier === 'free' ? 'Fotos de productos (Pro)' : 'Agregar foto (opcional)'}
+                  : tier === 'free' ? (HIDE_PRO_UI ? 'Fotos no disponibles' : 'Fotos de productos (Pro)') : 'Agregar foto (opcional)'}
               </Text>
             </Pressable>
             <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Nombre"

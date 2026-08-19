@@ -7,7 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
-import { usePlan, proFeatureAlert } from '../../../lib/plan';
+import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
 
 type Scope = 'product' | 'category' | 'combo';
 
@@ -190,10 +190,13 @@ export default function Promotions() {
       {tier === 'free' ? (
         <View style={styles.lockedBox}>
           <Ionicons name="lock-closed-outline" size={28} color="#bbb" />
-          <Text style={styles.lockedTitle}>Función de Kahve Pro</Text>
+          <Text style={styles.lockedTitle}>
+            {HIDE_PRO_UI ? 'No disponible' : 'Función de Kahve Pro'}
+          </Text>
           <Text style={styles.lockedText}>
-            Las promociones automáticas (2x1, combos, etc.) están
-            disponibles en el plan Pro.
+            {HIDE_PRO_UI
+              ? 'Las promociones automáticas no están disponibles en esta versión.'
+              : 'Las promociones automáticas (2x1, combos, etc.) están disponibles en el plan Pro.'}
           </Text>
         </View>
       ) : (

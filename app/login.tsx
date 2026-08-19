@@ -20,12 +20,16 @@ export default function Login() {
     const { error } = await signInWithPin(email.trim(), pin);
     setBusy(false);
     if (error) {
-      // Distinguir credenciales incorrectas de problemas de configuración/red
-      const msg = error.message ?? '';
-      if (msg.includes('Invalid login credentials')) {
+      // "error" YA es un string (signInWithPin lo devuelve así desde
+      // auth.tsx) — antes se leía error.message sobre ese string, que
+      // siempre da undefined, así que esta comparación nunca coincidía
+      // y CUALQUIER fallo de login (incluida una simple contraseña mal
+      // escrita) mostraba "Error de conexión" en vez del mensaje
+      // correcto. Esto fue justo lo que vio el revisor de Apple.
+      if (error.includes('Invalid login credentials')) {
         setError('Correo o PIN incorrectos. Intenta de nuevo.');
       } else {
-        setError(`Error de conexión: ${msg}`);
+        setError(`Error de conexión: ${error}`);
       }
       return;
     }
@@ -106,7 +110,7 @@ export default function Login() {
             </Pressable>
           </View>
 
-          <Text style={styles.version}>Kahve · v1.0.8</Text>
+          <Text style={styles.version}>Kahve · v1.0.9</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

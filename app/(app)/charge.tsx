@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react';
-import { router } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
+  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { usePlan, proFeatureAlert } from '../../lib/plan';
+import { printReceipt } from '../../lib/printer';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useOpenShift } from '../../lib/shift';
 import { useCart, cartTotals, lineUnitPrice } from '../../store/cart';
+import { computePromotions, type PromotionRow } from '../../lib/promotions';
 import type { CardType, PaymentMethod } from '../../types/db';
 
 // Montos rápidos: redondeos hacia arriba útiles + billetes comunes
@@ -22,6 +24,10 @@ function quickAmounts(total: number): number[] {
 }
 
 export default function Charge() {
+  const { width } = useWindowDimensions();
+  // En pantallas anchas (tablets, landscape) el formulario se centra con un
+  // ancho máximo cómodo de leer, en vez de estirarse de borde a borde.
+  const isWide = width >= 700;
   const { employee } = useAuth();
   const { shift } = useOpenShift(employee);
   const cart = useCart();
@@ -40,14 +46,42 @@ export default function Charge() {
   const [tip, setTip] = useState(0);
   const [customTip, setCustomTip] = useState('');
 
+  const [promotions, setPromotions] = useState<PromotionRow[]>([]);
+  // useFocusEffect (no useEffect simple) para que las promociones se
+  // vuelvan a pedir CADA VEZ que el cajero entra a cobrar — no solo la
+  // primera vez que se abrió esta pantalla en la sesión. Sin esto, una
+  // promoción creada o activada por el admin mientras el cajero ya tenía
+  // la app abierta nunca se detectaba hasta cerrar sesión y volver a
+  // entrar (que fuerza a toda la app a recargar desde cero).
+  useFocusEffect(
+    useCallback(() => {
+      if (tier !== 'pro') { setPromotions([]); return; }
+      supabase
+        .from('promotions')
+        .select('id, name, scope, product_id, category_id, buy_quantity, discount_percent, is_active, trigger_product_id, trigger_quantity, reward_product_id')
+        .eq('is_active', true)
+        .then(({ data }) => setPromotions((data as PromotionRow[]) ?? []));
+    }, [tier]),
+  );
+
   const gross = cart.subtotal();
-  const discounted = Math.max(+(gross - discount).toFixed(2), 0);
+  // Las promociones se aplican SIEMPRE primero, automático — no cuentan
+  // contra el límite de descuento manual del cajero, porque no fue él
+  // quien decidió darlas.
+  const { totalSavings: promoDiscount, applied: appliedPromotions } = useMemo(
+    () => computePromotions(cart.lines, promotions),
+    [cart.lines, promotions],
+  );
+  const afterPromo = Math.max(+(gross - promoDiscount).toFixed(2), 0);
+  const discounted = Math.max(+(afterPromo - discount).toFixed(2), 0);
   const { subtotal, tax, total } = cartTotals(discounted);
   // La propina se suma al cobro pero NO es venta: viaja aparte en payments.tip
   const grandTotal = +(total + tip).toFixed(2);
 
-  // Cajero: máximo 10% de descuento; supervisor/admin sin límite
-  const maxDiscount = employee?.role === 'cajero' ? +(gross * 0.10).toFixed(2) : gross;
+  // Cajero: máximo 10% de descuento MANUAL adicional, calculado sobre lo
+  // que el cliente ya pagaría con la promoción aplicada (no sobre el
+  // precio de lista, para no darle al cajero más margen del que debería).
+  const maxDiscount = employee?.role === 'cajero' ? +(afterPromo * 0.10).toFixed(2) : afterPromo;
 
   const applyDiscount = (amount: number) => {
     const value = +amount.toFixed(2);
@@ -69,7 +103,8 @@ export default function Charge() {
   const canConfirm =
     cart.lines.length > 0 &&
     !busy &&
-    (method !== 'efectivo' || (received !== null && received >= grandTotal));
+    (method !== 'efectivo' || (received !== null && received >= grandTotal)) &&
+    (method !== 'plataforma' || reference.trim().length > 0);
 
   const shareTicket = async (order: any, lines: typeof cart.lines, info: {
     total: number; tip: number; discount: number; tax: number;
@@ -136,6 +171,42 @@ export default function Charge() {
     }
   };
 
+  const printCurrentTicket = async (order: any, lines: typeof cart.lines, info: {
+    total: number; tip: number; discount: number; tax: number;
+    method: string; received: number | null; change: number | null;
+  }) => {
+    try {
+      const { data: org } = await supabase
+        .from('organizations').select('name').eq('id', employee!.organization_id).single();
+      const methodLabel = info.method === 'tarjeta' ? 'Tarjeta'
+        : info.method === 'transferencia' ? 'Transferencia' : 'Efectivo';
+      await printReceipt({
+        orgName: org?.name ?? 'Kahve',
+        orderNumber: order.order_number,
+        customerName: order.customer_name ?? null,
+        createdAt: new Date(),
+        lines: lines.map((l) => ({
+          quantity: l.quantity,
+          name: l.product.name,
+          modifiers: l.modifiers.map((m) => m.name),
+          total: lineUnitPrice(l) * l.quantity,
+        })),
+        discount: info.discount,
+        tax: info.tax,
+        tip: info.tip,
+        total: info.total,
+        method: methodLabel,
+        received: info.received,
+        change: info.change,
+      });
+    } catch (e: any) {
+      Alert.alert(
+        'No se pudo imprimir',
+        e?.message ?? 'Revisa que la impresora esté encendida y conectada.',
+      );
+    }
+  };
+
   const confirm = async () => {
     if (!employee || !shift) return;
     setBusy(true);
@@ -152,6 +223,7 @@ export default function Charge() {
         subtotal,
         tax,
         discount,
+        promo_discount: promoDiscount,
         total,
         created_by: employee.id,
         paid_at: new Date().toISOString(),
@@ -187,6 +259,11 @@ export default function Charge() {
             price_delta: m.price_delta,
           })),
         );
+        // Insumos extra de los modificadores elegidos (ej. "Leche
+        // deslactosada"), sumados al costo ya congelado de la receta base.
+        await supabase.rpc('consume_modifier_supplies', {
+          p_order_item_id: item.id,
+        });
       }
     }
 
@@ -210,10 +287,31 @@ export default function Charge() {
 
     cart.clear();
     setBusy(false);
+
+    // Reiniciar TODO el formulario de cobro para la siguiente venta.
+    // Sin esto, si esta pantalla no se desmonta entre una venta y la
+    // siguiente (algunas configuraciones de navegación reutilizan la
+    // misma instancia), el monto recibido, el método de pago, la
+    // propina y el descuento de la venta anterior se quedaban pegados
+    // y aparecían de entrada en la venta nueva.
+    setMethod('efectivo');
+    setCardType('debito');
+    setReceived(null);
+    setReference('');
+    setDiscount(0);
+    setCustomDiscount('');
+    setTip(0);
+    setCustomTip('');
     Alert.alert(
       `Orden #${String(order.order_number).padStart(3, '0')}`,
       'Pago registrado. Enviada a preparación.',
       [
+        {
+          text: 'Imprimir',
+          onPress: () => {
+            printCurrentTicket(order, ticketLines, ticketInfo).finally(() => router.back());
+          },
+        },
         {
           text: 'Enviar ticket',
           onPress: () => {
@@ -238,18 +336,36 @@ export default function Charge() {
     >
     <ScrollView
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.container}>
+      contentContainerStyle={[
+        styles.container,
+        isWide && styles.containerWide,
+      ]}>
       <View style={styles.totalBox}>
         <Text style={styles.totalLabel}>Total a cobrar</Text>
         <Text style={styles.totalValue}>${grandTotal.toFixed(2)}</Text>
         <Text style={styles.totalSub}>
           {[
+            promoDiscount > 0 ? `Promo −$${promoDiscount.toFixed(2)}` : null,
             discount > 0 ? `Descuento −$${discount.toFixed(2)}` : null,
             tip > 0 ? `Venta $${total.toFixed(2)} + propina $${tip.toFixed(2)}` : null,
             `IVA incluido $${tax.toFixed(2)}`,
           ].filter(Boolean).join(' · ')}
         </Text>
       </View>
+
+      {appliedPromotions.length > 0 && (
+        <View style={styles.promoBox}>
+          {appliedPromotions.map((p) => (
+            <View key={p.name} style={styles.promoRow}>
+              <Ionicons name="pricetag" size={14} color="#0F6E56" />
+              <Text style={styles.promoText}>
+                {p.name}{p.timesApplied > 1 ? ` ×${p.timesApplied}` : ''}
+              </Text>
+              <Text style={styles.promoAmount}>−${p.discountAmount.toFixed(2)}</Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       <Pressable style={styles.discountRow} onPress={() => setShowDiscount(true)}>
         <Ionicons name="pricetag-outline" size={16}
@@ -294,14 +410,15 @@ export default function Charge() {
 
       <Text style={styles.sectionTitle}>¿Cómo pagó el cliente?</Text>
       <View style={styles.methodRow}>
-        {(['efectivo', 'tarjeta', 'transferencia'] as PaymentMethod[]).map((m) => (
+        {(['efectivo', 'tarjeta', 'transferencia', 'plataforma'] as PaymentMethod[]).map((m) => (
           <Pressable
             key={m}
             style={[styles.methodButton, method === m && styles.methodSelected]}
             onPress={() => setMethod(m)}
           >
             <Text style={[styles.methodText, method === m && styles.methodTextSelected]}>
-              {m === 'efectivo' ? 'Efectivo' : m === 'tarjeta' ? 'Tarjeta' : 'Transf.'}
+              {m === 'efectivo' ? 'Efectivo' : m === 'tarjeta' ? 'Tarjeta'
+                : m === 'transferencia' ? 'Transf.' : 'Plataforma'}
             </Text>
           </Pressable>
         ))}
@@ -361,6 +478,33 @@ export default function Charge() {
           />
           <Text style={styles.hint}>
             Cobra en la terminal física y confirma aquí una vez aprobado.
+          </Text>
+        </>
+      )}
+
+      {method === 'plataforma' && (
+        <>
+          <Text style={styles.sectionTitle}>¿Cuál plataforma?</Text>
+          <View style={styles.methodRow}>
+            {['Uber Eats', 'Didi Food', 'Rappi'].map((p) => (
+              <Pressable key={p}
+                style={[styles.methodButton, reference === p && styles.methodSelected]}
+                onPress={() => setReference(p)}>
+                <Text style={[styles.methodText, reference === p && styles.methodTextSelected]}>
+                  {p}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput placeholderTextColor="#9A9A9A"
+            style={styles.input}
+            placeholder="...o escribe otra plataforma"
+            value={reference}
+            onChangeText={setReference}
+          />
+          <Text style={styles.hint}>
+            El pago ya lo procesó la plataforma; no se contará como efectivo
+            en el corte de caja.
           </Text>
         </>
       )}
@@ -466,12 +610,19 @@ export default function Charge() {
 
 const styles = StyleSheet.create({
   container: { padding: 16, gap: 10 },
+  containerWide: { maxWidth: 560, width: '100%', alignSelf: 'center' },
   totalBox: {
     backgroundColor: '#4A1B0C', borderRadius: 14, padding: 18, alignItems: 'center',
   },
   totalLabel: { color: '#F5C4B3', fontSize: 12 },
   totalValue: { color: '#FAECE7', fontSize: 32, fontWeight: '600' },
   totalSub: { color: '#F0997B', fontSize: 11, marginTop: 2 },
+  promoBox: {
+    backgroundColor: '#E1F5EE', borderRadius: 10, padding: 10, gap: 4,
+  },
+  promoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  promoText: { flex: 1, fontSize: 12.5, color: '#0F6E56', fontWeight: '600' },
+  promoAmount: { fontSize: 12.5, color: '#0F6E56', fontWeight: '700' },
   sectionTitle: { fontSize: 13, color: '#666', marginTop: 8 },
   methodRow: { flexDirection: 'row', gap: 8 },
   methodButton: {

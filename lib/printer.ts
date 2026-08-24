@@ -70,7 +70,8 @@ export interface ReceiptData {
   customerName: string | null;
   createdAt: Date;
   lines: ReceiptLine[];
-  discount: number;
+  discount: number;       // descuento manual del cajero
+  promoDiscount: number;  // descuento por promociones automáticas (2x1, combos)
   tax: number;
   tip: number;
   total: number;
@@ -118,6 +119,7 @@ function buildReceiptPayload(r: ReceiptData, charsPerLine: number): string {
   }
 
   out += rule + '\n';
+  if (r.promoDiscount > 0) out += line('Promocion', `-${money(r.promoDiscount)}`) + '\n';
   if (r.discount > 0) out += line('Descuento', `-${money(r.discount)}`) + '\n';
   out += line('IVA incluido', money(r.tax)) + '\n';
   if (r.tip > 0) out += line('Propina', money(r.tip)) + '\n';

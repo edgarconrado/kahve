@@ -107,7 +107,7 @@ export default function Charge() {
     (method !== 'plataforma' || reference.trim().length > 0);
 
   const shareTicket = async (order: any, lines: typeof cart.lines, info: {
-    total: number; tip: number; discount: number; tax: number;
+    total: number; tip: number; discount: number; promoDiscount: number; tax: number;
     method: string; received: number | null; change: number | null;
   }) => {
     try {
@@ -145,6 +145,8 @@ export default function Charge() {
           </div>
           <table>${rows}</table>
           <table style="margin-top:10px">
+            ${info.promoDiscount > 0
+              ? `<tr class="tot"><td>Promoción</td><td style="text-align:right">−$${info.promoDiscount.toFixed(2)}</td></tr>` : ''}
             ${info.discount > 0
               ? `<tr class="tot"><td>Descuento</td><td style="text-align:right">−$${info.discount.toFixed(2)}</td></tr>` : ''}
             <tr class="tot"><td>IVA incluido</td><td style="text-align:right">$${info.tax.toFixed(2)}</td></tr>
@@ -172,7 +174,7 @@ export default function Charge() {
   };
 
   const printCurrentTicket = async (order: any, lines: typeof cart.lines, info: {
-    total: number; tip: number; discount: number; tax: number;
+    total: number; tip: number; discount: number; promoDiscount: number; tax: number;
     method: string; received: number | null; change: number | null;
   }) => {
     try {
@@ -192,6 +194,7 @@ export default function Charge() {
           total: lineUnitPrice(l) * l.quantity,
         })),
         discount: info.discount,
+        promoDiscount: info.promoDiscount,
         tax: info.tax,
         tip: info.tip,
         total: info.total,
@@ -283,7 +286,7 @@ export default function Charge() {
 
     // Capturar lo necesario para el ticket ANTES de limpiar el carrito
     const ticketLines = [...cart.lines];
-    const ticketInfo = { total, tip, discount, tax, method, received, change };
+    const ticketInfo = { total, tip, discount, promoDiscount, tax, method, received, change };
 
     cart.clear();
     setBusy(false);

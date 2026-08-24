@@ -79,41 +79,56 @@ export interface ReceiptData {
   change: number | null;
 }
 
-// Construye el texto con etiquetas ESC/POS que entiende esta librería:
-// <C>centrado</C>, <B>negritas</B>, <D>doble alto</D>. Los guiones y
-// espacios están calibrados para 32 caracteres (58mm) — en 80mm el
-// papel simplemente deja más margen a la derecha, es aceptable.
-function buildReceiptPayload(r: ReceiptData): string {
-  const line = (left: string, right: string, width = 32) => {
-    const space = Math.max(width - left.length - right.length, 1);
+// La mayoría de impresoras térmicas económicas usan una codificación
+// antigua (CP437/850), no UTF-8: enviar acentos o ñ tal cual produce
+// caracteres corruptos. Los quitamos antes de imprimir.
+function stripAccents(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // quita los acentos (é → e, ñ → n, etc.)
+    .replace(/[^\x00-\x7F]/g, '');    // quita cualquier otro carácter no-ASCII (emojis, etc.)
+}
+
+// Texto plano, SIN etiquetas <C>/<B>: react-native-thermal-printer no
+// las interpreta — las imprime literalmente como texto, que es
+// justamente el bug que se reportó. El centrado y las columnas se
+// calculan aquí con espacios, según el ancho real de la impresora.
+function buildReceiptPayload(r: ReceiptData, charsPerLine: number): string {
+  const center = (text: string) => {
+    const pad = Math.max(Math.floor((charsPerLine - text.length) / 2), 0);
+    return ' '.repeat(pad) + text;
+  };
+  const line = (left: string, right: string) => {
+    const space = Math.max(charsPerLine - left.length - right.length, 1);
     return left + ' '.repeat(space) + right;
   };
+  const rule = '-'.repeat(charsPerLine);
   const money = (n: number) => `$${n.toFixed(2)}`;
 
   let out = '';
-  out += `<C><B>${r.orgName}</B></C>\n`;
-  out += `<C>Orden #${String(r.orderNumber).padStart(3, '0')}</C>\n`;
-  out += `<C>${r.createdAt.toLocaleString('es-MX')}</C>\n`;
-  if (r.customerName) out += `<C>Cliente: ${r.customerName}</C>\n`;
-  out += '--------------------------------\n';
+  out += center(r.orgName) + '\n';
+  out += center(`Orden #${String(r.orderNumber).padStart(3, '0')}`) + '\n';
+  out += center(r.createdAt.toLocaleString('es-MX')) + '\n';
+  if (r.customerName) out += center(`Cliente: ${r.customerName}`) + '\n';
+  out += rule + '\n';
 
   for (const l of r.lines) {
     out += line(`${l.quantity}x ${l.name}`, money(l.total)) + '\n';
     for (const m of l.modifiers) out += `   ${m}\n`;
   }
 
-  out += '--------------------------------\n';
+  out += rule + '\n';
   if (r.discount > 0) out += line('Descuento', `-${money(r.discount)}`) + '\n';
   out += line('IVA incluido', money(r.tax)) + '\n';
   if (r.tip > 0) out += line('Propina', money(r.tip)) + '\n';
-  out += `<B>${line('TOTAL', money(r.total))}</B>\n`;
+  out += line('TOTAL', money(r.total)) + '\n';
   out += line('Pago', r.method) + '\n';
   if (r.received !== null) {
     out += line('Recibido', money(r.received)) + '\n';
     out += line('Cambio', money(r.change ?? 0)) + '\n';
   }
-  out += '\n<C>¡Gracias por tu visita! ☕</C>\n\n\n';
-  return out;
+  out += '\n' + center('Gracias por tu visita!') + '\n\n\n';
+  return stripAccents(out);
 }
 
 export async function printReceipt(data: ReceiptData): Promise<void> {
@@ -127,11 +142,12 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   if (!printer) {
     throw new Error('No hay una impresora configurada en este dispositivo.');
   }
-  const payload = buildReceiptPayload(data);
+  const charsPerLine = printer.widthMM === '58' ? 32 : 42;
+  const payload = buildReceiptPayload(data, charsPerLine);
   await ThermalPrinterModule.printBluetooth({
     macAddress: printer.macAddress,
     payload,
     printerWidthMM: Number(printer.widthMM),
-    printerNbrCharactersPerLine: printer.widthMM === '58' ? 32 : 42,
+    printerNbrCharactersPerLine: charsPerLine,
   });
 }

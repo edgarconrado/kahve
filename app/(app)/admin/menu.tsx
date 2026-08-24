@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Switch,
   Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
@@ -10,7 +10,7 @@ import { decode } from 'base64-arraybuffer';
 import { Image } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
-import { usePlan, proFeatureAlert } from '../../../lib/plan';
+import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
 import type { Modifier, Product } from '../../../types/db';
 import RecipeEditor from '../../../components/RecipeEditor';
 
@@ -322,6 +322,13 @@ export default function Menu() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={styles.screenHeader}>
+        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        </Pressable>
+        <Text style={styles.screenHeaderTitle}>Menú</Text>
+        <View style={{ width: 22 }} />
+      </View>
       <FlatList
         data={visibleProducts}
         keyExtractor={(p) => p.id}
@@ -456,7 +463,7 @@ export default function Menu() {
               )}
               <Text style={[styles.imagePickerText, tier === 'free' && { color: '#999' }]}>
                 {imageUri ? 'Cambiar foto'
-                  : tier === 'free' ? 'Fotos de productos (Pro)' : 'Agregar foto (opcional)'}
+                  : tier === 'free' ? (HIDE_PRO_UI ? 'Fotos no disponibles' : 'Fotos de productos (Pro)') : 'Agregar foto (opcional)'}
               </Text>
             </Pressable>
             <TextInput placeholderTextColor="#9A9A9A" style={styles.input} placeholder="Nombre"
@@ -598,6 +605,12 @@ export default function Menu() {
 }
 
 const styles = StyleSheet.create({
+  screenHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,

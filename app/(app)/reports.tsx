@@ -8,7 +8,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
-import { usePlan, proFeatureAlert } from '../../lib/plan';
+import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../lib/plan';
 
 type Period = 'hoy' | 'semana' | 'mes' | 'año';
 const PERIODS: { key: Period; label: string }[] = [
@@ -32,7 +32,10 @@ interface PaymentRow { method: string; card_type: string | null; total: number; 
 interface Ticket {
   id: string; order_number: number; customer_name: string | null;
   status: string; total: number; created_at: string; cancel_reason: string | null;
-  order_items: { product_name: string; quantity: number }[];
+  order_items: {
+    product_name: string; quantity: number;
+    order_item_modifiers: { modifier_name: string }[];
+  }[];
   payments: { method: string; card_type: string | null; amount: number }[];
 }
 interface SupplyCost { total_sales: number; total_supply_cost: number; cost_percent: number }
@@ -54,6 +57,7 @@ const PAYMENT_META: Record<string, { label: string; color: string }> = {
   'tarjeta-debito':  { label: 'Tarjeta débito',  color: '#378ADD' },
   'tarjeta-credito': { label: 'Tarjeta crédito', color: '#7F77DD' },
   'transferencia':   { label: 'Transferencia',   color: '#B4B2A9' },
+  'plataforma':      { label: 'Plataforma',       color: '#E8590C' },
 };
 const paymentKey = (p: { method: string; card_type: string | null }) =>
   p.method === 'tarjeta' ? `tarjeta-${p.card_type}` : p.method;
@@ -169,7 +173,8 @@ export default function Reports() {
     const { data: tix } = await supabase
       .from('orders')
       .select('id, order_number, customer_name, status, total, created_at, cancel_reason,'
-        + ' order_items(product_name, quantity), payments(method, card_type, amount)')
+        + ' order_items(product_name, quantity, order_item_modifiers(modifier_name)),'
+        + ' payments(method, card_type, amount)')
       .gte('created_at', from.toISOString())
       .order('created_at', { ascending: false })
       .limit(100);
@@ -446,7 +451,7 @@ export default function Reports() {
               onPress={() => proFeatureAlert('El costo de insumos, alertas de stock y mermas')}>
               <Ionicons name="lock-closed-outline" size={15} color="#aaa" />
               <Text style={styles.lockedRowText}>
-                Costo de insumos, stock bajo y mermas (Pro)
+                {HIDE_PRO_UI ? 'Costo de insumos, stock bajo y mermas' : 'Costo de insumos, stock bajo y mermas (Pro)'}
               </Text>
             </Pressable>
           ) : (
@@ -556,9 +561,16 @@ export default function Reports() {
                   {isOpen && (
                     <View style={styles.ticketDetail}>
                       {item.order_items.map((oi, i) => (
-                        <Text key={i} style={styles.ticketItem}>
-                          {oi.quantity}x {oi.product_name}
-                        </Text>
+                        <View key={i} style={{ marginBottom: 4 }}>
+                          <Text style={styles.ticketItem}>
+                            {oi.quantity}x {oi.product_name}
+                          </Text>
+                          {oi.order_item_modifiers?.length > 0 && (
+                            <Text style={styles.ticketModifiers}>
+                              {oi.order_item_modifiers.map((m) => m.modifier_name).join(' · ')}
+                            </Text>
+                          )}
+                        </View>
                       ))}
                       {cancelled && item.cancel_reason ? (
                         <Text style={styles.ticketCancelReason}>
@@ -789,5 +801,6 @@ const styles = StyleSheet.create({
     marginTop: 8, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 8,
   },
   ticketItem: { fontSize: 13, color: '#333', paddingVertical: 1 },
+  ticketModifiers: { fontSize: 11, color: '#888', marginLeft: 12, marginTop: 1 },
   ticketCancelReason: { fontSize: 12, color: '#A32D2D', marginTop: 4, fontStyle: 'italic' },
 });

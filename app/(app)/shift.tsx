@@ -34,22 +34,47 @@ export default function ShiftScreen() {
     useCallback(() => {
       if (!shift) { setByMethod({}); setExpectedCash(null); return; }
       Promise.all([
+        // Sin join anidado a orders: se piden por separado y se cruzan en
+        // el cliente. Un join anidado (payments -> orders) depende de DOS
+        // políticas RLS a la vez (la de payments Y la de orders); si algo
+        // no calza entre ambas para un rol específico, Supabase puede
+        // devolver la fila sin el dato anidado o fallar en silencio, y
+        // las ventas en efectivo "desaparecen" del corte sin ningún error
+        // visible. Separarlo en dos consultas simples evita ese riesgo.
         supabase
           .from('payments')
-          .select('amount, tip, method, card_type, orders(status)')
+          .select('amount, tip, method, card_type, order_id')
           .eq('shift_id', shift.id),
         supabase
           .from('cash_movements')
           .select('id, type, amount, reason')
           .eq('shift_id', shift.id)
           .order('created_at'),
-      ]).then(([{ data: pays }, { data: movs }]) => {
+      ]).then(async ([{ data: pays, error: paysError }, { data: movs }]) => {
+        if (paysError) {
+          console.warn('Error cargando pagos del turno:', paysError.message);
+        }
+        const payRows = pays ?? [];
+
+        // Estados de las órdenes asociadas, en una sola consulta aparte
+        const orderIds = [...new Set(payRows.map((p: any) => p.order_id))];
+        let cancelledIds = new Set<string>();
+        if (orderIds.length > 0) {
+          const { data: orders } = await supabase
+            .from('orders')
+            .select('id, status')
+            .in('id', orderIds);
+          cancelledIds = new Set(
+            (orders ?? []).filter((o: any) => o.status === 'cancelada').map((o: any) => o.id),
+          );
+        }
+
         const totals: Record<string, number> = {};
         let cash = 0;
         let cashTips = 0;
         let cardTips = 0;
-        (pays ?? []).forEach((p: any) => {
-          if (p.orders?.status === 'cancelada') return;
+        payRows.forEach((p: any) => {
+          if (cancelledIds.has(p.order_id)) return;
           const key = p.method === 'tarjeta' ? `tarjeta-${p.card_type}` : p.method;
           totals[key] = (totals[key] ?? 0) + Number(p.amount);
           if (p.method === 'efectivo') {
@@ -223,6 +248,14 @@ export default function ShiftScreen() {
       Alert.alert('Error', 'No se pudo cerrar el turno.');
       return;
     }
+
+    // Reiniciar el conteo para el PRÓXIMO turno. Sin esto, si esta
+    // pantalla no se desmonta entre un cierre y el corte del siguiente
+    // turno, los billetes y monedas contados aquí se quedaban pegados y
+    // aparecían de entrada en un turno que nunca se contó de verdad.
+    setCounts({});
+    setCoins('');
+
     await refresh();
     const sign = difference > 0 ? 'sobrante' : difference < 0 ? 'faltante' : 'exacto';
     Alert.alert(
@@ -333,6 +366,7 @@ export default function ShiftScreen() {
           ['tarjeta-debito', 'Tarjeta débito', 'card-outline'],
           ['tarjeta-credito', 'Tarjeta crédito', 'card-outline'],
           ['transferencia', 'Transferencia', 'business-outline'],
+          ['plataforma', 'Plataforma (Uber Eats, Didi...)', 'bicycle-outline'],
           ['propinas-efectivo', 'Propinas en efectivo', 'heart-outline'],
           ['propinas-otros', 'Propinas tarjeta/transf.', 'heart-outline'],
         ].filter(([key]) =>

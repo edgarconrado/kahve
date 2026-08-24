@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable,
   StyleSheet, Switch, Text, TextInput, View,
@@ -7,7 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
-import { usePlan, proFeatureAlert } from '../../../lib/plan';
+import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
 
 interface Supply {
   id: string;
@@ -164,7 +164,12 @@ export default function Supplies() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.header}>
-        <Text style={styles.title}>Insumos</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+            <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+          </Pressable>
+          <Text style={styles.title}>Insumos</Text>
+        </View>
         {lowStockCount > 0 && (
           <View style={styles.alertPill}>
             <Ionicons name="warning-outline" size={13} color="#854F0B" />
@@ -178,10 +183,13 @@ export default function Supplies() {
       {tier === 'free' ? (
         <View style={styles.lockedBox}>
           <Ionicons name="lock-closed-outline" size={28} color="#bbb" />
-          <Text style={styles.lockedTitle}>Función de Kahve Pro</Text>
+          <Text style={styles.lockedTitle}>
+            {HIDE_PRO_UI ? 'No disponible' : 'Función de Kahve Pro'}
+          </Text>
           <Text style={styles.lockedText}>
-            El control de insumos, recetas y mermas está disponible en el
-            plan Pro.
+            {HIDE_PRO_UI
+              ? 'El control de insumos no está disponible en esta versión.'
+              : 'El control de insumos, recetas y mermas está disponible en el plan Pro.'}
           </Text>
         </View>
       ) : (

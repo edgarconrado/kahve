@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useAudioPlayer } from 'expo-audio';
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import {
   Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
@@ -30,6 +30,14 @@ export default function Queue() {
   // En tablets/landscape hay espacio para ver varias órdenes a la vez.
   const numColumns = width >= 900 ? 3 : width >= 640 ? 2 : 1;
   const player = useAudioPlayer(require('../../assets/new-order.wav'));
+
+  // Sin esto, iOS respeta por default el interruptor físico de silencio
+  // (o el modo silencio del sistema) y NO reproduce el sonido — Android
+  // no tiene esa misma restricción, por eso ahí "sonaba solo". Se
+  // configura una vez al montar la pantalla.
+  useEffect(() => {
+    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+  }, []);
   const { tier } = usePlan(employee);
   const [orders, setOrders] = useState<QueueOrder[]>([]);
   const [readyToday, setReadyToday] = useState(0);

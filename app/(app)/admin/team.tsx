@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
+  Alert, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FunctionsHttpError } from '@supabase/supabase-js';
@@ -40,6 +40,8 @@ const MATRIX_ROLES: { role: EmployeeRole; short: string }[] = [
 
 export default function Team() {
   const { employee: me } = useAuth();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
   const { tier } = usePlan(me);
   const [team, setTeam] = useState<Employee[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -147,8 +149,19 @@ export default function Team() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff' }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 96, gap: 8 }}>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={styles.screenHeader}>
+        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        </Pressable>
+        <Text style={styles.screenHeaderTitle}>Equipo</Text>
+        <View style={{ width: 22 }} />
+      </View>
+      <ScrollView
+        contentContainerStyle={[
+          { padding: 16, paddingBottom: 96, gap: 8 },
+          isWide && { maxWidth: 640, width: '100%', alignSelf: 'center' },
+        ]}>
 
       <Text style={styles.sectionTitle}>Empleados activos ({team.length})</Text>
       {team.map((item) => {
@@ -318,10 +331,17 @@ export default function Team() {
               </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
   sectionTitle: { fontSize: 12, color: '#888' },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

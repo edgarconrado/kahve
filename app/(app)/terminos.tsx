@@ -28,6 +28,7 @@ export default function Terminos() {
           heading: '4. Planes, pagos y renovación',
           body: [
             'Las organizaciones nuevas reciben un periodo de prueba del plan Pro; al concluir, la cuenta pasa automáticamente al plan gratuito si no se contrata una suscripción.',
+            'Todas las suscripciones se contratan exclusivamente fuera de la aplicación, a través de nuestro sitio web (jacaranda-lab.com/kahve) o contactándonos directamente. Ninguna versión de la aplicación incluye un mecanismo de compra dentro de sí misma.',
             'La suscripción a Kahve Pro se cobra por adelantado (mensual o anual) a través de Stripe y se renueva automáticamente hasta que se cancele.',
             'Puedes cancelar en cualquier momento desde la app; conservarás el acceso Pro hasta el final del periodo ya pagado. No se otorgan reembolsos por periodos parciales.',
             'Los precios pueden cambiar; te lo notificaremos con al menos 30 días de anticipación.',

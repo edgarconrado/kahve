@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  FlatList, Image, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
@@ -22,12 +24,16 @@ const TINTS = [
 ];
 
 export default function Pos() {
+  const { width } = useWindowDimensions();
+  // Más columnas cuando hay más ancho (tablets y landscape).
+  const numColumns = width >= 900 ? 4 : width >= 640 ? 3 : 2;
   const { employee } = useAuth();
   const { shift, loading } = useOpenShift(employee);
   const cart = useCart();
   const [products, setProducts] = useState<ProductWithModifiers[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<string>('all');
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<ProductWithModifiers | null>(null);
   const [showTicket, setShowTicket] = useState(false);
 
@@ -58,12 +64,18 @@ export default function Pos() {
     }, []),
   );
 
-  const visible = useMemo(
-    () => (categoryId === 'all'
+  const visible = useMemo(() => {
+    let rows = categoryId === 'all'
       ? products
-      : products.filter((p) => p.category_id === categoryId)),
-    [products, categoryId],
-  );
+      : products.filter((p) => p.category_id === categoryId);
+    const q = search.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((p) =>
+        p.name.toLowerCase().includes(q)
+        || (p.description ?? '').toLowerCase().includes(q));
+    }
+    return rows;
+  }, [products, categoryId, search]);
 
   // Cantidad de cada producto ya en el ticket (para el badge)
   const inCart = useMemo(() => {
@@ -101,6 +113,22 @@ export default function Pos() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.searchBox}>
+        <Ionicons name="search-outline" size={16} color="#999" />
+        <TextInput
+          placeholderTextColor="#9A9A9A"
+          style={styles.searchInput}
+          placeholder="Buscar producto…"
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <Pressable hitSlop={8} onPress={() => setSearch('')}>
+            <Ionicons name="close-circle" size={16} color="#ccc" />
+          </Pressable>
+        )}
+      </View>
+
       {/* Chips de categoría */}
       <View style={styles.chipRow}>
         <Pressable
@@ -127,9 +155,17 @@ export default function Pos() {
       <FlatList
         data={visible}
         keyExtractor={(p) => p.id}
-        numColumns={2}
+        key={numColumns} // FlatList no permite cambiar numColumns sin remontar
+        numColumns={numColumns}
         columnWrapperStyle={{ gap: 12 }}
         contentContainerStyle={{ gap: 12, padding: 16, paddingTop: 8 }}
+        ListEmptyComponent={
+          search ? (
+            <Text style={styles.empty}>
+              No hay productos que coincidan con "{search}".
+            </Text>
+          ) : null
+        }
         renderItem={({ item, index }) => {
           const tint = TINTS[index % TINTS.length];
           const qty = inCart[item.id] ?? 0;
@@ -251,6 +287,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 28,
   },
   primaryButtonText: { color: '#FAECE7', fontWeight: '600' },
+  searchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#ddd', borderRadius: 10,
+    marginHorizontal: 16, marginTop: 12, paddingHorizontal: 12, paddingVertical: 9,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: '#1F1F1F' },
+  empty: { textAlign: 'center', color: '#999', fontSize: 13, marginTop: 30, width: '100%' },
   chipRow: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 8,
     paddingHorizontal: 16, paddingTop: 12,

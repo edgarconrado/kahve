@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform,
+  Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
-import { usePlan } from '../../lib/plan';
+import { usePlan, HIDE_PRO_UI } from '../../lib/plan';
 import { useOpenShift } from '../../lib/shift';
 import { can, type Permission } from '../../lib/permissions';
 
@@ -36,10 +36,15 @@ interface ClosedShift {
 
 export default function Profile() {
   const { employee, signOut } = useAuth();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
   const { tier, isTrial, daysLeft } = usePlan(employee);
   const { shift } = useOpenShift(employee);
   const [stats, setStats] = useState({ orders: 0, sold: 0, cancelled: 0 });
   const [showPin, setShowPin] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<ClosedShift[]>([]);
   const [pin1, setPin1] = useState('');
@@ -128,6 +133,52 @@ export default function Profile() {
     Alert.alert('PIN actualizado', 'Úsalo en tu próximo inicio de sesión.');
   };
 
+  const performDelete = async (forceDelete = false) => {
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-account', {
+      body: { forceDelete },
+    });
+    setDeleting(false);
+
+    let failure: string | null = data?.error ?? null;
+    let isSoleAdmin = data?.isSoleAdmin ?? false;
+    if (error && !failure) {
+      const anyErr = error as any;
+      if (anyErr?.context?.text) {
+        try {
+          const raw = await anyErr.context.text();
+          const parsed = JSON.parse(raw);
+          failure = parsed.error ?? raw;
+          isSoleAdmin = parsed.isSoleAdmin ?? false;
+        } catch { failure = error.message; }
+      } else {
+        failure = error.message;
+      }
+    }
+
+    if (isSoleAdmin) {
+      Alert.alert(
+        'Eres el único administrador',
+        (failure ?? '') + '\n\n¿Quieres eliminar tu cuenta de todas formas?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Eliminar de todas formas', style: 'destructive',
+            onPress: () => performDelete(true) },
+        ],
+      );
+      return;
+    }
+    if (failure) {
+      Alert.alert('No se pudo eliminar la cuenta', failure);
+      return;
+    }
+
+    setShowDelete(false);
+    Alert.alert('Cuenta eliminada', 'Tu cuenta se eliminó por completo.');
+    await signOut();
+    router.replace('/login');
+  };
+
   const handleSignOut = async () => {
     await signOut();
     router.replace('/login');
@@ -141,7 +192,7 @@ export default function Profile() {
     });
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
       {/* Encabezado */}
       <View style={styles.header}>
         <View style={styles.avatar}>
@@ -155,17 +206,19 @@ export default function Profile() {
           <View style={[styles.roleChip, { backgroundColor: meta.bg, marginTop: 0 }]}>
             <Text style={[styles.roleChipText, { color: meta.fg }]}>{meta.label}</Text>
           </View>
-          <View style={[styles.roleChip, {
-            backgroundColor: tier === 'pro' ? '#4A1B0C' : '#f0f0f0', marginTop: 0,
-          }]}>
-            <Text style={[styles.roleChipText, {
-              color: tier === 'pro' ? '#FAECE7' : '#888',
+          {!HIDE_PRO_UI && (
+            <View style={[styles.roleChip, {
+              backgroundColor: tier === 'pro' ? '#4A1B0C' : '#f0f0f0', marginTop: 0,
             }]}>
-              {isTrial
-                ? `Prueba Pro · ${daysLeft} día${daysLeft === 1 ? '' : 's'}`
-                : tier === 'pro' ? 'Kahve Pro' : 'Plan Gratis'}
-            </Text>
-          </View>
+              <Text style={[styles.roleChipText, {
+                color: tier === 'pro' ? '#FAECE7' : '#888',
+              }]}>
+                {isTrial
+                  ? `Prueba Pro · ${daysLeft} día${daysLeft === 1 ? '' : 's'}`
+                  : tier === 'pro' ? 'Kahve Pro' : 'Plan Gratis'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -228,7 +281,7 @@ export default function Profile() {
 
       {/* Acciones */}
       <View style={styles.actions}>
-        {employee?.role === 'admin' && (
+        {employee?.role === 'admin' && !HIDE_PRO_UI && (
           <Pressable style={styles.actionRow}
             onPress={() => router.push('/(app)/upgrade')}>
             <Ionicons name="star-outline" size={18} color="#B8860B" />
@@ -236,6 +289,12 @@ export default function Profile() {
             <Ionicons name="chevron-forward" size={16} color="#bbb" />
           </Pressable>
         )}
+        <Pressable style={styles.actionRow}
+          onPress={() => router.push('/(app)/printer')}>
+          <Ionicons name="print-outline" size={18} color="#666" />
+          <Text style={styles.actionText}>Impresora</Text>
+          <Ionicons name="chevron-forward" size={16} color="#bbb" />
+        </Pressable>
         <Pressable style={styles.actionRow} onPress={() => setShowPin(true)}>
           <Ionicons name="lock-closed-outline" size={18} color="#666" />
           <Text style={styles.actionText}>Cambiar PIN</Text>
@@ -265,11 +324,63 @@ export default function Profile() {
           <Text style={styles.actionText}>Términos de Uso</Text>
           <Ionicons name="chevron-forward" size={16} color="#bbb" />
         </Pressable>
+        <Pressable style={styles.actionRow}
+          onPress={() => {
+            const msg = encodeURIComponent('Hola, tengo una pregunta sobre Kahve.');
+            Linking.openURL(`https://wa.me/523531730317?text=${msg}`);
+          }}>
+          <Ionicons name="chatbubble-ellipses-outline" size={18} color="#666" />
+          <Text style={styles.actionText}>Contáctanos</Text>
+          <Ionicons name="chevron-forward" size={16} color="#bbb" />
+        </Pressable>
+        <Pressable style={styles.actionRow}
+          onPress={() => { setDeleteConfirmText(''); setShowDelete(true); }}>
+          <Ionicons name="trash-outline" size={18} color="#A32D2D" />
+          <Text style={[styles.actionText, { color: '#A32D2D' }]}>Eliminar mi cuenta</Text>
+        </Pressable>
         <Pressable style={styles.actionRow} onPress={handleSignOut}>
           <Ionicons name="log-out-outline" size={18} color="#A32D2D" />
           <Text style={[styles.actionText, { color: '#A32D2D' }]}>Cerrar sesión</Text>
         </Pressable>
       </View>
+
+      {/* Modal: eliminar cuenta */}
+      <Modal visible={showDelete} transparent animationType="slide"
+        onRequestClose={() => setShowDelete(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <Pressable style={styles.backdrop} onPress={() => setShowDelete(false)} />
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>Eliminar mi cuenta</Text>
+            <Text style={styles.deleteWarning}>
+              Esta acción es permanente. Ya no podrás iniciar sesión con esta
+              cuenta, y tu nombre y correo se eliminarán. Tus ventas y turnos
+              registrados se conservan (sin datos personales), por razones
+              contables del negocio.
+            </Text>
+            <Text style={styles.label}>
+              Escribe ELIMINAR para confirmar
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholderTextColor="#9A9A9A"
+              autoCapitalize="characters"
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder="ELIMINAR"
+            />
+            <Pressable
+              style={[styles.deleteConfirmButton,
+                (deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR' || deleting) && { opacity: 0.5 }]}
+              disabled={deleteConfirmText.trim().toUpperCase() !== 'ELIMINAR' || deleting}
+              onPress={() => performDelete(false)}>
+              <Text style={styles.deleteConfirmText}>
+                {deleting ? 'Eliminando…' : 'Eliminar mi cuenta definitivamente'}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Modal: cambiar PIN */}
       <Modal visible={showPin} transparent animationType="slide"
@@ -345,6 +456,7 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   container: { padding: 16, paddingBottom: 40, gap: 8, backgroundColor: '#fff' },
+  containerWide: { maxWidth: 640, width: '100%', alignSelf: 'center' },
   header: { alignItems: 'center', gap: 4, paddingVertical: 12 },
   avatar: {
     width: 72, height: 72, borderRadius: 36, backgroundColor: '#FAECE7',
@@ -386,11 +498,21 @@ const styles = StyleSheet.create({
   orgName: { fontSize: 15, fontWeight: '700', color: '#222' },
   orgMeta: { fontSize: 12, color: '#888', marginTop: 2 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  deleteWarning: {
+    fontSize: 12.5, color: '#791F1F', backgroundColor: '#FCEBEB',
+    borderRadius: 10, padding: 10, lineHeight: 18, marginBottom: 8,
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#A32D2D', borderRadius: 10,
+    paddingVertical: 14, alignItems: 'center', marginTop: 10,
+  },
+  deleteConfirmText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
     padding: 20, paddingBottom: 32, gap: 10,
   },
   sheetTitle: { fontSize: 18, fontWeight: '600', marginBottom: 4 },
+  label: { fontSize: 12, color: '#888', marginTop: 6, marginBottom: 2 },
   input: {
     color: '#1F1F1F',
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,

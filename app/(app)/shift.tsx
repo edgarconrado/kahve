@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, Modal,
+  Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, Modal, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -12,6 +12,8 @@ import { useOpenShift } from '../../lib/shift';
 const BILLS = [1000, 500, 200, 100, 50, 20] as const;
 
 export default function ShiftScreen() {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
   const { employee } = useAuth();
   const { shift, refresh } = useOpenShift(employee);
   const [openingCash, setOpeningCash] = useState('500');
@@ -32,22 +34,47 @@ export default function ShiftScreen() {
     useCallback(() => {
       if (!shift) { setByMethod({}); setExpectedCash(null); return; }
       Promise.all([
+        // Sin join anidado a orders: se piden por separado y se cruzan en
+        // el cliente. Un join anidado (payments -> orders) depende de DOS
+        // políticas RLS a la vez (la de payments Y la de orders); si algo
+        // no calza entre ambas para un rol específico, Supabase puede
+        // devolver la fila sin el dato anidado o fallar en silencio, y
+        // las ventas en efectivo "desaparecen" del corte sin ningún error
+        // visible. Separarlo en dos consultas simples evita ese riesgo.
         supabase
           .from('payments')
-          .select('amount, tip, method, card_type, orders(status)')
+          .select('amount, tip, method, card_type, order_id')
           .eq('shift_id', shift.id),
         supabase
           .from('cash_movements')
           .select('id, type, amount, reason')
           .eq('shift_id', shift.id)
           .order('created_at'),
-      ]).then(([{ data: pays }, { data: movs }]) => {
+      ]).then(async ([{ data: pays, error: paysError }, { data: movs }]) => {
+        if (paysError) {
+          console.warn('Error cargando pagos del turno:', paysError.message);
+        }
+        const payRows = pays ?? [];
+
+        // Estados de las órdenes asociadas, en una sola consulta aparte
+        const orderIds = [...new Set(payRows.map((p: any) => p.order_id))];
+        let cancelledIds = new Set<string>();
+        if (orderIds.length > 0) {
+          const { data: orders } = await supabase
+            .from('orders')
+            .select('id, status')
+            .in('id', orderIds);
+          cancelledIds = new Set(
+            (orders ?? []).filter((o: any) => o.status === 'cancelada').map((o: any) => o.id),
+          );
+        }
+
         const totals: Record<string, number> = {};
         let cash = 0;
         let cashTips = 0;
         let cardTips = 0;
-        (pays ?? []).forEach((p: any) => {
-          if (p.orders?.status === 'cancelada') return;
+        payRows.forEach((p: any) => {
+          if (cancelledIds.has(p.order_id)) return;
           const key = p.method === 'tarjeta' ? `tarjeta-${p.card_type}` : p.method;
           totals[key] = (totals[key] ?? 0) + Number(p.amount);
           if (p.method === 'efectivo') {
@@ -221,6 +248,14 @@ export default function ShiftScreen() {
       Alert.alert('Error', 'No se pudo cerrar el turno.');
       return;
     }
+
+    // Reiniciar el conteo para el PRÓXIMO turno. Sin esto, si esta
+    // pantalla no se desmonta entre un cierre y el corte del siguiente
+    // turno, los billetes y monedas contados aquí se quedaban pegados y
+    // aparecían de entrada en un turno que nunca se contó de verdad.
+    setCounts({});
+    setCoins('');
+
     await refresh();
     const sign = difference > 0 ? 'sobrante' : difference < 0 ? 'faltante' : 'exacto';
     Alert.alert(
@@ -233,7 +268,7 @@ export default function ShiftScreen() {
 
   if (!shift) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
         <Text style={styles.title}>Abrir turno</Text>
         <Text style={styles.label}>Fondo de caja inicial</Text>
         <TextInput placeholderTextColor="#9A9A9A"
@@ -261,7 +296,7 @@ export default function ShiftScreen() {
     >
     <ScrollView
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={styles.container}>
+      contentContainerStyle={[styles.container, isWide && styles.containerWide]}>
       <Text style={styles.title}>Cerrar turno</Text>
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
@@ -331,6 +366,7 @@ export default function ShiftScreen() {
           ['tarjeta-debito', 'Tarjeta débito', 'card-outline'],
           ['tarjeta-credito', 'Tarjeta crédito', 'card-outline'],
           ['transferencia', 'Transferencia', 'business-outline'],
+          ['plataforma', 'Plataforma (Uber Eats, Didi...)', 'bicycle-outline'],
           ['propinas-efectivo', 'Propinas en efectivo', 'heart-outline'],
           ['propinas-otros', 'Propinas tarjeta/transf.', 'heart-outline'],
         ].filter(([key]) =>
@@ -519,6 +555,7 @@ export default function ShiftScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 10, paddingBottom: 40 },
+  containerWide: { maxWidth: 640, width: '100%', alignSelf: 'center' },
   title: { fontSize: 20, fontWeight: '600' },
   label: { fontSize: 13, color: '#666', marginTop: 6 },
   input: {

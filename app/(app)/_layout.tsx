@@ -7,8 +7,8 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const icon =
   (name: IoniconName, nameOutline: IoniconName) =>
-  ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
-    <Ionicons name={focused ? name : nameOutline} size={size} color={color} />;
+    ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
+      <Ionicons name={focused ? name : nameOutline} size={size} color={color} />;
 
 export default function AppLayout() {
   const { session, employee, loading } = useAuth();
@@ -51,22 +51,29 @@ export default function AppLayout() {
           tabBarIcon: icon('bar-chart', 'bar-chart-outline'),
         }}
       />
+
+      {/* Administración: una sola pestaña que abre el menú de secciones,
+          en vez de una pestaña por cada sección (Menú/Equipo/Insumos/
+          Promociones) — con 4 apiladas la barra se veía muy apretada en
+          un teléfono. Las pantallas siguen existiendo igual, solo que
+          ahora se llega a ellas navegando desde el hub en admin/index. */}
       <Tabs.Screen
-        name="admin/team"
+        name="admin/index"
         options={{
-          title: 'Equipo',
-          href: can(role, 'team.manage') ? '/(app)/admin/team' : null,
-          tabBarIcon: icon('people', 'people-outline'),
+          title: 'Admin',
+          href: can(role, 'menu.edit') ? '/(app)/admin' : null,
+          tabBarIcon: icon('settings', 'settings-outline'),
         }}
       />
-      <Tabs.Screen
-        name="admin/menu"
-        options={{
-          title: 'Menú',
-          href: can(role, 'menu.edit') ? '/(app)/admin/menu' : null,
-          tabBarIcon: icon('clipboard', 'clipboard-outline'),
-        }}
-      />
+      <Tabs.Screen name="admin/team"
+        options={{ title: 'Equipo', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/menu"
+        options={{ title: 'Menú', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/promotions"
+        options={{ title: 'Promociones', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/supplies"
+        options={{ title: 'Insumos', href: null, headerShown: false }} />
+
       <Tabs.Screen
         name="profile"
         options={{
@@ -81,11 +88,14 @@ export default function AppLayout() {
         options={{ title: 'Aviso de Privacidad', href: null, headerShown: false }} />
       <Tabs.Screen name="terminos"
         options={{ title: 'Términos de Uso', href: null, headerShown: false }} />
+      <Tabs.Screen name="printer"
+        options={{ title: 'Impresora', href: null, headerShown: false }} />
       <Tabs.Screen name="upgrade"
         options={{ title: 'Kahve Pro', href: null }} />
       <Tabs.Screen name="board"
         options={{ title: 'Órdenes listas', href: null, headerShown: false }} />
       <Tabs.Screen name="shift" options={{ title: 'Turno', href: null }} />
+
     </Tabs>
   );
 }

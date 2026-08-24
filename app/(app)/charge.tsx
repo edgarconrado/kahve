@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { router } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
@@ -47,14 +47,22 @@ export default function Charge() {
   const [customTip, setCustomTip] = useState('');
 
   const [promotions, setPromotions] = useState<PromotionRow[]>([]);
-  useEffect(() => {
-    if (tier !== 'pro') { setPromotions([]); return; }
-    supabase
-      .from('promotions')
-      .select('id, name, scope, product_id, category_id, buy_quantity, discount_percent, is_active, trigger_product_id, trigger_quantity, reward_product_id')
-      .eq('is_active', true)
-      .then(({ data }) => setPromotions((data as PromotionRow[]) ?? []));
-  }, [tier]);
+  // useFocusEffect (no useEffect simple) para que las promociones se
+  // vuelvan a pedir CADA VEZ que el cajero entra a cobrar — no solo la
+  // primera vez que se abrió esta pantalla en la sesión. Sin esto, una
+  // promoción creada o activada por el admin mientras el cajero ya tenía
+  // la app abierta nunca se detectaba hasta cerrar sesión y volver a
+  // entrar (que fuerza a toda la app a recargar desde cero).
+  useFocusEffect(
+    useCallback(() => {
+      if (tier !== 'pro') { setPromotions([]); return; }
+      supabase
+        .from('promotions')
+        .select('id, name, scope, product_id, category_id, buy_quantity, discount_percent, is_active, trigger_product_id, trigger_quantity, reward_product_id')
+        .eq('is_active', true)
+        .then(({ data }) => setPromotions((data as PromotionRow[]) ?? []));
+    }, [tier]),
+  );
 
   const gross = cart.subtotal();
   // Las promociones se aplican SIEMPRE primero, automático — no cuentan

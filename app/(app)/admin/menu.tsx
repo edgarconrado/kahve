@@ -145,6 +145,29 @@ export default function Menu() {
   const canSave = name.trim() && parseFloat(price) >= 0
     && (categoryId || newCategory.trim()) && !busy;
 
+  const deactivateProduct = () => {
+    if (!editing) return;
+    Alert.alert(
+      `Desactivar "${editing.name}"`,
+      'Ya no aparecerá en Vender ni en el Menú. Tu historial de ventas y ' +
+      'reportes con este producto se conserva sin cambios — solo se oculta ' +
+      'para nuevas ventas. Puedes pedirnos que lo reactivemos si lo necesitas.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desactivar', style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase
+              .from('products').update({ is_active: false }).eq('id', editing.id);
+            if (error) { Alert.alert('Error', error.message); return; }
+            setShowForm(false);
+            load();
+          },
+        },
+      ],
+    );
+  };
+
   const save = async () => {
     if (!employee) return;
     setBusy(true);
@@ -596,6 +619,13 @@ export default function Menu() {
                 {busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear producto'}
               </Text>
             </Pressable>
+
+            {editing && (
+              <Pressable style={styles.deactivateButton} onPress={deactivateProduct}>
+                <Ionicons name="eye-off-outline" size={15} color="#A32D2D" />
+                <Text style={styles.deactivateText}>Desactivar producto</Text>
+              </Pressable>
+            )}
           </ScrollView>
         </View>
               </KeyboardAvoidingView>
@@ -707,4 +737,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center', marginTop: 8,
   },
   saveText: { color: '#FAECE7', fontSize: 15, fontWeight: '600' },
+  deactivateButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 1, borderColor: '#A32D2D', borderRadius: 10,
+    paddingVertical: 12, marginTop: 4,
+  },
+  deactivateText: { color: '#A32D2D', fontWeight: '600', fontSize: 13 },
 });

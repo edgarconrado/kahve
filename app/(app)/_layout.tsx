@@ -73,6 +73,8 @@ export default function AppLayout() {
         options={{ title: 'Promociones', href: null, headerShown: false }} />
       <Tabs.Screen name="admin/supplies"
         options={{ title: 'Insumos', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/loyalty"
+        options={{ title: 'Clientes frecuentes', href: null, headerShown: false }} />
 
       <Tabs.Screen
         name="profile"

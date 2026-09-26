@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
   Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
@@ -46,6 +46,42 @@ export default function Charge() {
   const [tip, setTip] = useState(0);
   const [customTip, setCustomTip] = useState('');
 
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [loyaltyStatus, setLoyaltyStatus] = useState<{
+    qualifies: boolean; visits_count: number; visits_required: number;
+    reward_product_id: string; reward_product_name: string; discount_percent: number;
+  } | null>(null);
+  const [loyaltyApplied, setLoyaltyApplied] = useState(false);
+  const [checkingLoyalty, setCheckingLoyalty] = useState(false);
+
+  const checkLoyalty = async (phone: string) => {
+    if (!shift || phone.trim().length < 8) { setLoyaltyStatus(null); return; }
+    setCheckingLoyalty(true);
+    const { data } = await supabase.rpc('check_loyalty_status', {
+      p_branch_id: shift.branch_id, p_phone: phone.trim(),
+    });
+    setLoyaltyStatus(data?.[0]?.reward_product_id ? data[0] : null);
+    setCheckingLoyalty(false);
+  };
+
+  // Se dispara solo, medio segundo después de que el cajero deja de
+  // teclear — así no depende de que el campo pierda el foco (si va
+  // directo a "Cobrar" sin tocar otro campo, antes nunca se enteraba).
+  useEffect(() => {
+    const timer = setTimeout(() => checkLoyalty(customerPhone), 500);
+    return () => clearTimeout(timer);
+  }, [customerPhone, shift?.branch_id]);
+
+  // El descuento de lealtad solo se aplica a UNA unidad del producto de
+  // premio, y solo si ese producto ya está en el ticket — no se agrega
+  // solo, el cajero debe agregarlo como cualquier venta normal.
+  const loyaltyDiscount = useMemo(() => {
+    if (!loyaltyApplied || !loyaltyStatus?.qualifies) return 0;
+    const rewardLine = cart.lines.find((l) => l.product.id === loyaltyStatus.reward_product_id);
+    if (!rewardLine) return 0;
+    return +(lineUnitPrice(rewardLine) * (loyaltyStatus.discount_percent / 100)).toFixed(2);
+  }, [loyaltyApplied, loyaltyStatus, cart.lines]);
+
   const [promotions, setPromotions] = useState<PromotionRow[]>([]);
   // useFocusEffect (no useEffect simple) para que las promociones se
   // vuelvan a pedir CADA VEZ que el cajero entra a cobrar — no solo la
@@ -72,16 +108,16 @@ export default function Charge() {
     () => computePromotions(cart.lines, promotions),
     [cart.lines, promotions],
   );
-  const afterPromo = Math.max(+(gross - promoDiscount).toFixed(2), 0);
-  const discounted = Math.max(+(afterPromo - discount).toFixed(2), 0);
+  const afterAutomatic = Math.max(+(gross - promoDiscount - loyaltyDiscount).toFixed(2), 0);
+  const discounted = Math.max(+(afterAutomatic - discount).toFixed(2), 0);
   const { subtotal, tax, total } = cartTotals(discounted);
   // La propina se suma al cobro pero NO es venta: viaja aparte en payments.tip
   const grandTotal = +(total + tip).toFixed(2);
 
   // Cajero: máximo 10% de descuento MANUAL adicional, calculado sobre lo
-  // que el cliente ya pagaría con la promoción aplicada (no sobre el
+  // que el cliente ya pagaría con promo/lealtad aplicados (no sobre el
   // precio de lista, para no darle al cajero más margen del que debería).
-  const maxDiscount = employee?.role === 'cajero' ? +(afterPromo * 0.10).toFixed(2) : afterPromo;
+  const maxDiscount = employee?.role === 'cajero' ? +(afterAutomatic * 0.10).toFixed(2) : afterAutomatic;
 
   const applyDiscount = (amount: number) => {
     const value = +amount.toFixed(2);
@@ -103,16 +139,17 @@ export default function Charge() {
   const canConfirm =
     cart.lines.length > 0 &&
     !busy &&
+    !checkingLoyalty &&
     (method !== 'efectivo' || (received !== null && received >= grandTotal)) &&
     (method !== 'plataforma' || reference.trim().length > 0);
 
   const shareTicket = async (order: any, lines: typeof cart.lines, info: {
-    total: number; tip: number; discount: number; promoDiscount: number; tax: number;
-    method: string; received: number | null; change: number | null;
+    total: number; tip: number; discount: number; promoDiscount: number; loyaltyDiscount: number;
+    tax: number; method: string; received: number | null; change: number | null;
   }) => {
     try {
       const { data: org } = await supabase
-        .from('organizations').select('name').eq('id', employee!.organization_id).single();
+        .from('organizations').select('name, logo_url').eq('id', employee!.organization_id).single();
       const rows = lines.map((l) => {
         const unit = lineUnitPrice(l);
         const mods = l.modifiers.length
@@ -137,6 +174,9 @@ export default function Charge() {
           .grand td { font-size: 16px; font-weight: 700; color: #222; padding-top: 8px; }
           .foot { text-align: center; color: #999; font-size: 11px; margin-top: 18px; }
         </style></head><body>
+          ${org?.logo_url
+            ? `<img src="${org.logo_url}" style="display:block;margin:0 auto 8px;width:64px;height:64px;border-radius:12px;object-fit:cover" />`
+            : ''}
           <h1>${org?.name ?? 'Kahve'}</h1>
           <div class="sub">
             Ticket #${String(order.order_number).padStart(3, '0')}
@@ -145,6 +185,8 @@ export default function Charge() {
           </div>
           <table>${rows}</table>
           <table style="margin-top:10px">
+            ${info.loyaltyDiscount > 0
+              ? `<tr class="tot"><td>Cliente frecuente</td><td style="text-align:right">−$${info.loyaltyDiscount.toFixed(2)}</td></tr>` : ''}
             ${info.promoDiscount > 0
               ? `<tr class="tot"><td>Promoción</td><td style="text-align:right">−$${info.promoDiscount.toFixed(2)}</td></tr>` : ''}
             ${info.discount > 0
@@ -174,8 +216,8 @@ export default function Charge() {
   };
 
   const printCurrentTicket = async (order: any, lines: typeof cart.lines, info: {
-    total: number; tip: number; discount: number; promoDiscount: number; tax: number;
-    method: string; received: number | null; change: number | null;
+    total: number; tip: number; discount: number; promoDiscount: number; loyaltyDiscount: number;
+    tax: number; method: string; received: number | null; change: number | null;
   }) => {
     try {
       const { data: org } = await supabase
@@ -195,6 +237,7 @@ export default function Charge() {
         })),
         discount: info.discount,
         promoDiscount: info.promoDiscount,
+        loyaltyDiscount: info.loyaltyDiscount,
         tax: info.tax,
         tip: info.tip,
         total: info.total,
@@ -221,12 +264,15 @@ export default function Charge() {
         branch_id: shift.branch_id,
         shift_id: shift.id,
         customer_name: cart.customerName || null,
+        customer_phone: customerPhone.trim() || null,
         order_type: cart.orderType,
         status: 'pagada',
         subtotal,
         tax,
         discount,
         promo_discount: promoDiscount,
+        loyalty_discount: loyaltyDiscount,
+        loyalty_redeemed: loyaltyDiscount > 0,
         total,
         created_by: employee.id,
         paid_at: new Date().toISOString(),
@@ -286,7 +332,7 @@ export default function Charge() {
 
     // Capturar lo necesario para el ticket ANTES de limpiar el carrito
     const ticketLines = [...cart.lines];
-    const ticketInfo = { total, tip, discount, promoDiscount, tax, method, received, change };
+    const ticketInfo = { total, tip, discount, promoDiscount, loyaltyDiscount, tax, method, received, change };
 
     cart.clear();
     setBusy(false);
@@ -305,6 +351,9 @@ export default function Charge() {
     setCustomDiscount('');
     setTip(0);
     setCustomTip('');
+    setCustomerPhone('');
+    setLoyaltyStatus(null);
+    setLoyaltyApplied(false);
     Alert.alert(
       `Orden #${String(order.order_number).padStart(3, '0')}`,
       'Pago registrado. Enviada a preparación.',
@@ -370,6 +419,43 @@ export default function Charge() {
         </View>
       )}
 
+      {loyaltyStatus && (
+        <View style={styles.loyaltyBox}>
+          {loyaltyStatus.qualifies ? (
+            <>
+              <View style={styles.loyaltyRow}>
+                <Text style={styles.loyaltyHeadline}>
+                  🎉 Cliente frecuente — le toca su premio
+                </Text>
+              </View>
+              <Text style={styles.loyaltyDetail}>
+                {loyaltyStatus.reward_product_name}
+                {loyaltyStatus.discount_percent >= 100 ? ' gratis' : ` con ${loyaltyStatus.discount_percent}% off`}
+              </Text>
+              {loyaltyApplied ? (
+                loyaltyDiscount > 0 ? (
+                  <Text style={styles.loyaltyApplied}>
+                    Premio aplicado: −${loyaltyDiscount.toFixed(2)}
+                  </Text>
+                ) : (
+                  <Text style={styles.loyaltyWarning}>
+                    Agrega "{loyaltyStatus.reward_product_name}" al ticket para aplicar el premio.
+                  </Text>
+                )
+              ) : (
+                <Pressable style={styles.loyaltyButton} onPress={() => setLoyaltyApplied(true)}>
+                  <Text style={styles.loyaltyButtonText}>Aplicar premio</Text>
+                </Pressable>
+              )}
+            </>
+          ) : (
+            <Text style={styles.loyaltyProgress}>
+              Cliente frecuente: {loyaltyStatus.visits_count}/{loyaltyStatus.visits_required} visitas
+            </Text>
+          )}
+        </View>
+      )}
+
       <Pressable style={styles.discountRow} onPress={() => setShowDiscount(true)}>
         <Ionicons name="pricetag-outline" size={16}
           color={discount > 0 ? '#0F6E56' : '#666'} />
@@ -394,6 +480,23 @@ export default function Charge() {
         autoCapitalize="words"
         returnKeyType="done"
       />
+
+      {tier === 'pro' && (
+        <>
+          <Text style={styles.sectionTitle}>Teléfono (opcional · clientes frecuentes)</Text>
+          <TextInput placeholderTextColor="#9A9A9A"
+            style={styles.input}
+            placeholder="Para el programa de clientes frecuentes"
+            value={customerPhone}
+            onChangeText={(v) => { setCustomerPhone(v); setLoyaltyApplied(false); }}
+            keyboardType="phone-pad"
+            returnKeyType="done"
+          />
+          {checkingLoyalty && (
+            <Text style={styles.checkingText}>Verificando cliente…</Text>
+          )}
+        </>
+      )}
 
       <Text style={styles.sectionTitle}>Tipo de orden</Text>
       <View style={styles.methodRow}>
@@ -626,6 +729,21 @@ const styles = StyleSheet.create({
   promoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   promoText: { flex: 1, fontSize: 12.5, color: '#0F6E56', fontWeight: '600' },
   promoAmount: { fontSize: 12.5, color: '#0F6E56', fontWeight: '700' },
+  loyaltyBox: {
+    backgroundColor: '#FDF0DC', borderRadius: 10, padding: 12, gap: 6,
+  },
+  loyaltyRow: { flexDirection: 'row', alignItems: 'center' },
+  loyaltyHeadline: { fontSize: 13.5, color: '#854F0B', fontWeight: '700' },
+  loyaltyDetail: { fontSize: 12.5, color: '#854F0B' },
+  loyaltyApplied: { fontSize: 12.5, color: '#0F6E56', fontWeight: '700' },
+  loyaltyWarning: { fontSize: 12, color: '#A32D2D' },
+  loyaltyProgress: { fontSize: 12.5, color: '#854F0B' },
+  loyaltyButton: {
+    backgroundColor: '#4A1B0C', borderRadius: 8, paddingVertical: 9,
+    alignItems: 'center', marginTop: 2,
+  },
+  loyaltyButtonText: { color: '#FAECE7', fontSize: 13, fontWeight: '600' },
+  checkingText: { fontSize: 11.5, color: '#999', fontStyle: 'italic' },
   sectionTitle: { fontSize: 13, color: '#666', marginTop: 8 },
   methodRow: { flexDirection: 'row', gap: 8 },
   methodButton: {

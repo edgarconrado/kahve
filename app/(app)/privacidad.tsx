@@ -17,7 +17,14 @@ export default function Privacidad() {
           body: [
             'Datos de cuenta: nombre, correo electrónico, rol dentro del negocio y PIN de acceso (almacenado de forma cifrada).',
             'Datos operativos del negocio: catálogo de productos y sus fotografías, órdenes, ventas, pagos registrados (método y monto — nunca números de tarjeta), propinas, turnos, cortes de caja y movimientos de efectivo.',
-            'Datos de clientes finales: el nombre de pila que opcionalmente se captura en una orden para llamar al cliente cuando esté lista.',
+            'Datos de clientes finales: el nombre de pila que opcionalmente se captura en una orden para llamar al cliente cuando esté lista, y — si la cafetería tiene activo un programa de clientes frecuentes — el número telefónico que el cliente proporciona voluntariamente al negocio para participar en dicho programa.',
+          ],
+        },
+        {
+          heading: 'Datos de clientes frecuentes',
+          body: [
+            'Cuando una cafetería activa el programa de clientes frecuentes, el número telefónico se usa exclusivamente para contar sus visitas y saber cuándo le corresponde un premio — nunca se usa con fines publicitarios ni se comparte con nadie más.',
+            'La cafetería (nuestro cliente) es la responsable de estos datos frente a su propio cliente: es quien decide activar el programa y quien le informa a su cliente que su número se usará para este fin. Jacaranda Lab actúa únicamente como encargado, almacenando la información en nombre de la cafetería.',
           ],
         },
         {

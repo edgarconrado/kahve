@@ -25,6 +25,11 @@ const SECTIONS: {
     subtitle: '2x1 y descuentos automáticos por cantidad',
     icon: 'pricetags-outline',
   },
+  {
+    route: '/(app)/admin/loyalty', title: 'Clientes frecuentes',
+    subtitle: 'Premia a quien regresa seguido',
+    icon: 'heart-outline',
+  },
 ];
 
 export default function AdminHub() {

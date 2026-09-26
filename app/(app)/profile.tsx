@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
+  Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -43,6 +45,7 @@ export default function Profile() {
   const [stats, setStats] = useState({ orders: 0, sold: 0, cancelled: 0 });
   const [showPin, setShowPin] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -59,7 +62,7 @@ export default function Profile() {
       if (!employee) return;
       supabase
         .from('organizations')
-        .select('name, slug')
+        .select('name, slug, logo_url')
         .eq('id', employee.organization_id)
         .single()
         .then(({ data }) => setOrg(data));
@@ -179,6 +182,31 @@ export default function Profile() {
     router.replace('/login');
   };
 
+  const pickLogo = async () => {
+    if (!employee) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true, aspect: [1, 1],
+    });
+    if (result.canceled || !result.assets[0].base64) return;
+
+    setUploadingLogo(true);
+    const filePath = `${employee.organization_id}/logo-${Date.now()}.jpg`;
+    const { error: upError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, decode(result.assets[0].base64), { contentType: 'image/jpeg' });
+    if (upError) {
+      setUploadingLogo(false);
+      Alert.alert('Error al subir el logo', upError.message);
+      return;
+    }
+    const logoUrl = supabase.storage.from('product-images').getPublicUrl(filePath).data.publicUrl;
+    const { error } = await supabase.from('organizations')
+      .update({ logo_url: logoUrl }).eq('id', employee.organization_id);
+    setUploadingLogo(false);
+    if (error) { Alert.alert('Error', error.message); return; }
+    setOrg((o) => o ? { ...o, logo_url: logoUrl } : o);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     router.replace('/login');
@@ -246,9 +274,23 @@ export default function Profile() {
       {/* Permisos del rol */}
       {org && (
         <View style={styles.orgCard}>
-          <View style={styles.orgIcon}>
-            <Ionicons name="storefront-outline" size={20} color="#4A1B0C" />
-          </View>
+          <Pressable
+            style={styles.orgIconWrap}
+            disabled={employee?.role !== 'admin' || uploadingLogo}
+            onPress={pickLogo}>
+            <View style={styles.orgIcon}>
+              {org.logo_url ? (
+                <Image source={{ uri: org.logo_url }} style={styles.orgLogoImg} />
+              ) : (
+                <Ionicons name="storefront-outline" size={20} color="#4A1B0C" />
+              )}
+            </View>
+            {employee?.role === 'admin' && (
+              <View style={styles.orgLogoBadge}>
+                <Ionicons name={uploadingLogo ? 'hourglass-outline' : 'camera'} size={10} color="#fff" />
+              </View>
+            )}
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.orgName}>{org.name}</Text>
             <Text style={styles.orgMeta}>
@@ -256,6 +298,11 @@ export default function Profile() {
                 ? `${branch.name}${branch.address ? ` · ${branch.address}` : ''}`
                 : 'Todas las sucursales'}
             </Text>
+            {employee?.role === 'admin' && (
+              <Text style={styles.orgLogoHint}>
+                {uploadingLogo ? 'Subiendo…' : 'Toca el ícono para cambiar tu logo'}
+              </Text>
+            )}
           </View>
         </View>
       )}
@@ -491,11 +538,19 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#eee', borderRadius: 14,
     padding: 14, marginBottom: 4,
   },
+  orgIconWrap: { width: 40, height: 40 },
   orgIcon: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: '#FAECE7',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   orgName: { fontSize: 15, fontWeight: '700', color: '#222' },
+  orgLogoImg: { width: '100%', height: '100%', borderRadius: 10 },
+  orgLogoBadge: {
+    position: 'absolute', right: -3, bottom: -3, backgroundColor: '#4A1B0C',
+    borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#fff',
+  },
+  orgLogoHint: { fontSize: 10.5, color: '#B08968', marginTop: 2 },
   orgMeta: { fontSize: 12, color: '#888', marginTop: 2 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   deleteWarning: {

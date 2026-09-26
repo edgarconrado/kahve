@@ -153,3 +153,96 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
     printerNbrCharactersPerLine: charsPerLine,
   });
 }
+
+// ============================================================
+// Corte de caja (cierre de turno): mismo patrón de texto plano
+// que el ticket de venta — sin etiquetas <C>/<B>, alineado a mano.
+// ============================================================
+export interface ShiftReceiptMethodRow { label: string; amount: number }
+export interface ShiftReceiptMovement {
+  type: 'retiro' | 'deposito';
+  amount: number;
+  reason: string;
+}
+
+export interface ShiftReceiptData {
+  orgName: string;
+  employeeName: string;
+  openedAt: Date;
+  closedAt: Date;
+  openingCash: number;
+  methods: ShiftReceiptMethodRow[];
+  movements: ShiftReceiptMovement[];
+  expectedCash: number;
+  countedCash: number;
+  difference: number;
+}
+
+function buildShiftReceiptPayload(r: ShiftReceiptData, charsPerLine: number): string {
+  const center = (text: string) => {
+    const pad = Math.max(Math.floor((charsPerLine - text.length) / 2), 0);
+    return ' '.repeat(pad) + text;
+  };
+  const line = (left: string, right: string) => {
+    const space = Math.max(charsPerLine - left.length - right.length, 1);
+    return left + ' '.repeat(space) + right;
+  };
+  const rule = '-'.repeat(charsPerLine);
+  const money = (n: number) => `$${n.toFixed(2)}`;
+
+  let out = '';
+  out += center(r.orgName) + '\n';
+  out += center('Corte de caja') + '\n';
+  if (r.employeeName) out += center(r.employeeName) + '\n';
+  out += center(r.openedAt.toLocaleString('es-MX')) + '\n';
+  out += center('a ' + r.closedAt.toLocaleString('es-MX')) + '\n';
+  out += rule + '\n';
+
+  out += line('Fondo inicial', money(r.openingCash)) + '\n';
+  out += rule + '\n';
+
+  if (r.methods.length === 0) {
+    out += 'Sin ventas en este turno\n';
+  } else {
+    for (const m of r.methods) out += line(m.label, money(m.amount)) + '\n';
+  }
+  out += rule + '\n';
+
+  if (r.movements.length > 0) {
+    out += 'Movimientos de caja\n';
+    for (const m of r.movements) {
+      const sign = m.type === 'retiro' ? '-' : '+';
+      const label = ('  ' + m.reason).slice(0, Math.max(charsPerLine - 10, 4));
+      out += line(label, `${sign}${money(m.amount)}`) + '\n';
+    }
+    out += rule + '\n';
+  }
+
+  out += line('Efectivo esperado', money(r.expectedCash)) + '\n';
+  out += line('Efectivo contado', money(r.countedCash)) + '\n';
+  const sign = r.difference > 0 ? 'Sobrante' : r.difference < 0 ? 'Faltante' : 'Exacto';
+  out += line(`Diferencia (${sign})`, money(Math.abs(r.difference))) + '\n';
+  out += '\n' + center('Fin del corte') + '\n\n\n';
+  return stripAccents(out);
+}
+
+export async function printShiftReport(data: ShiftReceiptData): Promise<void> {
+  if (!ThermalPrinterModule) {
+    throw new Error(
+      'La impresora no está disponible en esta versión de la app. ' +
+      'Esta función requiere un build compilado (no funciona en Expo Go).',
+    );
+  }
+  const printer = await getSelectedPrinter();
+  if (!printer) {
+    throw new Error('No hay una impresora configurada en este dispositivo.');
+  }
+  const charsPerLine = printer.widthMM === '58' ? 32 : 42;
+  const payload = buildShiftReceiptPayload(data, charsPerLine);
+  await ThermalPrinterModule.printBluetooth({
+    macAddress: printer.macAddress,
+    payload,
+    printerWidthMM: Number(printer.widthMM),
+    printerNbrCharactersPerLine: charsPerLine,
+  });
+}

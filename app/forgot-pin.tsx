@@ -18,9 +18,12 @@ export default function ForgotPin() {
     if (!normalizedEmail || busy) return;
     setBusy(true);
     setError(null);
+    const redirectTo = Platform.OS === 'web'
+      ? `${window.location.origin}/reset-pin`
+      : 'kahve://reset-pin';
     const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(
       normalizedEmail,
-      { redirectTo: 'kahve://reset-pin' },
+      { redirectTo },
     );
     setBusy(false);
     if (recoveryError) {

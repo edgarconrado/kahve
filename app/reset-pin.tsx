@@ -12,6 +12,8 @@ type RecoveryState = 'loading' | 'ready' | 'invalid' | 'saved';
 
 export default function ResetPin() {
   const url = Linking.useURL();
+  const [eventUrl, setEventUrl] = useState<string | null>(null);
+  const [initialUrl, setInitialUrl] = useState<string | null>(null);
   const handledUrl = useRef<string | null>(null);
   const [state, setState] = useState<RecoveryState>('loading');
   const [pin, setPin] = useState('');
@@ -20,12 +22,27 @@ export default function ResetPin() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!url || handledUrl.current === url) return;
-    handledUrl.current = url;
+    Linking.getInitialURL().then(setInitialUrl);
+    const subscription = Linking.addEventListener('url', ({ url: nextUrl }) => {
+      setEventUrl(nextUrl);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    const recoveryUrl = [url, eventUrl, initialUrl].find((candidate) => (
+      candidate?.includes('#')
+      || candidate?.includes('access_token=')
+      || candidate?.includes('refresh_token=')
+      || candidate?.includes('code=')
+      || candidate?.includes('error_description=')
+    )) ?? null;
+    if (!recoveryUrl || handledUrl.current === recoveryUrl) return;
+    handledUrl.current = recoveryUrl;
 
     const establishRecoverySession = async () => {
-      const query = url.includes('?') ? url.split('?')[1].split('#')[0] : '';
-      const fragment = url.includes('#') ? url.split('#')[1] : '';
+      const query = recoveryUrl.includes('?') ? recoveryUrl.split('?')[1].split('#')[0] : '';
+      const fragment = recoveryUrl.includes('#') ? recoveryUrl.split('#')[1] : '';
       const params = new URLSearchParams(fragment || query);
       const linkError = params.get('error_description');
       if (linkError) {
@@ -55,7 +72,7 @@ export default function ResetPin() {
     };
 
     establishRecoverySession();
-  }, [url]);
+  }, [url, initialUrl]);
 
   const cleanPin = (value: string) => value.replace(/\D/g, '').slice(0, 6);
   const validPin = /^\d{6}$/.test(pin) && pin === confirmPin;

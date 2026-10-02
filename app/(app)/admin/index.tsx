@@ -81,7 +81,7 @@ export default function AdminHub() {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingTop: 48, paddingBottom: 12,
+    paddingHorizontal: 16, paddingTop: 30, paddingBottom: 8,
     backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
   },
   title: { fontSize: 16, lineHeight: 20, fontWeight: '700', color: '#FAECE7' },

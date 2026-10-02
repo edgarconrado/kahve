@@ -221,11 +221,12 @@ export default function Charge() {
   }) => {
     try {
       const { data: org } = await supabase
-        .from('organizations').select('name').eq('id', employee!.organization_id).single();
+        .from('organizations').select('name, logo_url').eq('id', employee!.organization_id).single();
       const methodLabel = info.method === 'tarjeta' ? 'Tarjeta'
         : info.method === 'transferencia' ? 'Transferencia' : 'Efectivo';
       await printReceipt({
         orgName: org?.name ?? 'Kahve',
+        logoUrl: org?.logo_url ?? null,
         orderNumber: order.order_number,
         customerName: order.customer_name ?? null,
         createdAt: new Date(),

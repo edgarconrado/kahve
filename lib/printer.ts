@@ -66,6 +66,7 @@ export interface ReceiptLine {
 
 export interface ReceiptData {
   orgName: string;
+  logoUrl?: string | null;
   orderNumber: number;
   customerName: string | null;
   createdAt: Date;
@@ -107,6 +108,7 @@ function buildReceiptPayload(r: ReceiptData, charsPerLine: number): string {
   const money = (n: number) => `$${n.toFixed(2)}`;
 
   let out = '';
+  if (r.logoUrl) out += `[C]<img>${r.logoUrl}</img>\n`;
   out += center(r.orgName) + '\n';
   out += center(`Orden #${String(r.orderNumber).padStart(3, '0')}`) + '\n';
   out += center(r.createdAt.toLocaleString('es-MX')) + '\n';

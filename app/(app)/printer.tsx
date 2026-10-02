@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, FlatList, PermissionsAndroid, Platform, Pressable, ScrollView, StyleSheet,
+  Alert, PermissionsAndroid, Platform, Pressable, ScrollView, StyleSheet,
   Switch, Text, TextInput, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -232,23 +232,24 @@ export default function PrinterSettings() {
           </Text>
         </Pressable>
 
-        <FlatList
-          data={devices}
-          keyExtractor={(d) => d.macAddress}
-          contentContainerStyle={{ gap: 8 }}
-          renderItem={({ item }) => (
-            <Pressable style={styles.deviceRow} onPress={() => choose(item)}>
+        <View style={{ gap: 8 }}>
+          {devices.map((device) => (
+            <Pressable
+              key={device.macAddress}
+              style={styles.deviceRow}
+              onPress={() => choose(device)}
+            >
               <Ionicons name="bluetooth" size={16} color="#4A1B0C" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.deviceName}>
-                  {item.name || 'Impresora Bluetooth'}
+                  {device.name || 'Impresora Bluetooth'}
                 </Text>
-                <Text style={styles.deviceMac}>{item.macAddress}</Text>
+                <Text style={styles.deviceMac}>{device.macAddress}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color="#bbb" />
             </Pressable>
-          )}
-        />
+          ))}
+        </View>
       </ScrollView>
     </View>
   );

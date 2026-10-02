@@ -211,7 +211,7 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
   await ThermalPrinterModule.printBluetooth({
     macAddress: printer.macAddress,
     payload,
-    printerWidthMM: Number(printer.widthMM),
+    printerWidthMM: printer.widthMM === '58' ? 48 : 72,
     printerNbrCharactersPerLine: charsPerLine,
   });
 }
@@ -304,7 +304,7 @@ export async function printShiftReport(data: ShiftReceiptData): Promise<void> {
   await ThermalPrinterModule.printBluetooth({
     macAddress: printer.macAddress,
     payload,
-    printerWidthMM: Number(printer.widthMM),
+    printerWidthMM: printer.widthMM === '58' ? 48 : 72,
     printerNbrCharactersPerLine: charsPerLine,
   });
 }

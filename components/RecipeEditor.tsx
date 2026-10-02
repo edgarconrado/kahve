@@ -7,13 +7,17 @@ import { supabase } from '../lib/supabase';
 
 interface Supply {
   id: string; name: string; unit: string; cost_per_unit: number; is_resale: boolean;
+  recipe_unit: string | null;
+  recipe_unit_factor: number;
 }
 interface RecipeLine {
   supply_id: string;
   supply_name: string;
-  unit: string;
-  cost_per_unit: number;
-  quantity_used: string; // como texto mientras se edita
+  stock_unit: string;      // unidad real de inventario (supplies.unit)
+  display_unit: string;    // unidad en la que se captura aquí (recipe_unit || unit)
+  factor: number;          // display = stock * factor
+  cost_per_unit: number;   // costo por unidad de STOCK
+  quantity_used: string;   // como texto mientras se edita, EN display_unit
 }
 
 interface Props {
@@ -22,10 +26,24 @@ interface Props {
   onChange?: (lines: { supply_id: string; quantity_used: number }[]) => void;
 }
 
+// Redondea a 4 decimales y quita ceros sobrantes, para no mostrar
+// cosas como "500.00000001" por errores de punto flotante.
+const formatQty = (n: number) => {
+  const rounded = Math.round(n * 10000) / 10000;
+  return String(rounded);
+};
+
 // Editor de receta: qué insumos y cuánto lleva un producto.
 // Se usa dentro del formulario de producto en Menú (admin/menu.tsx).
 // Si productId es null (producto todavía no creado), la receta se guarda
 // en memoria vía onChange y se persiste después de crear el producto.
+//
+// Nota sobre unidades: en base de datos (product_supplies.quantity_used)
+// SIEMPRE se guarda en la unidad de STOCK del insumo (supplies.unit), para
+// no tocar los triggers de consumo de inventario. Si el insumo tiene
+// configurada una "unidad de receta" (ej. stock en litros, receta en
+// mililitros), aquí se muestra y captura en esa unidad más práctica, y se
+// convierte de ida y vuelta con el factor guardado en supplies.
 export default function RecipeEditor({ productId, basePrice, onChange }: Props) {
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [lines, setLines] = useState<RecipeLine[]>([]);
@@ -35,7 +53,7 @@ export default function RecipeEditor({ productId, basePrice, onChange }: Props) 
   useEffect(() => {
     supabase
       .from('supplies')
-      .select('id, name, unit, cost_per_unit, is_resale')
+      .select('id, name, unit, cost_per_unit, is_resale, recipe_unit, recipe_unit_factor')
       .eq('is_active', true)
       .order('name')
       .then(({ data }) => setSupplies((data as Supply[]) ?? []));
@@ -46,17 +64,22 @@ export default function RecipeEditor({ productId, basePrice, onChange }: Props) 
     if (!productId) return;
     supabase
       .from('product_supplies')
-      .select('supply_id, quantity_used, supplies(name, unit, cost_per_unit)')
+      .select('supply_id, quantity_used, supplies(name, unit, cost_per_unit, recipe_unit, recipe_unit_factor)')
       .eq('product_id', productId)
       .then(({ data }) => {
         const rows = (data as any[]) ?? [];
-        setLines(rows.map((r) => ({
-          supply_id: r.supply_id,
-          supply_name: r.supplies?.name ?? '—',
-          unit: r.supplies?.unit ?? '',
-          cost_per_unit: r.supplies?.cost_per_unit ?? 0,
-          quantity_used: String(r.quantity_used),
-        })));
+        setLines(rows.map((r) => {
+          const factor = r.supplies?.recipe_unit ? (r.supplies?.recipe_unit_factor || 1) : 1;
+          return {
+            supply_id: r.supply_id,
+            supply_name: r.supplies?.name ?? '—',
+            stock_unit: r.supplies?.unit ?? '',
+            display_unit: r.supplies?.recipe_unit || r.supplies?.unit || '',
+            factor,
+            cost_per_unit: r.supplies?.cost_per_unit ?? 0,
+            quantity_used: formatQty(Number(r.quantity_used) * factor),
+          };
+        }));
       });
   }, [productId]);
 
@@ -66,13 +89,20 @@ export default function RecipeEditor({ productId, basePrice, onChange }: Props) 
     setLines(next);
     onChange?.(next
       .filter((l) => parseFloat(l.quantity_used) > 0)
-      .map((l) => ({ supply_id: l.supply_id, quantity_used: parseFloat(l.quantity_used) })));
+      .map((l) => ({
+        supply_id: l.supply_id,
+        // Se guarda siempre en unidad de stock, aunque aquí se capture en
+        // la unidad de receta (display_unit / factor).
+        quantity_used: parseFloat(l.quantity_used) / l.factor,
+      })));
   };
 
   const addSupply = (s: Supply) => {
     if (lines.some((l) => l.supply_id === s.id)) { setShowPicker(false); return; }
     notify([...lines, {
-      supply_id: s.id, supply_name: s.name, unit: s.unit,
+      supply_id: s.id, supply_name: s.name, stock_unit: s.unit,
+      display_unit: s.recipe_unit || s.unit,
+      factor: s.recipe_unit ? (s.recipe_unit_factor || 1) : 1,
       cost_per_unit: s.cost_per_unit, quantity_used: '',
     }]);
     setShowPicker(false);
@@ -90,10 +120,11 @@ export default function RecipeEditor({ productId, basePrice, onChange }: Props) 
   // Persistir en Supabase (solo aplica si el producto ya existe)
   const persistLine = async (line: RecipeLine) => {
     if (!productId) return; // se guarda al crear el producto, ver nota abajo
-    const qty = parseFloat(line.quantity_used);
-    if (!qty || qty <= 0) return;
+    const displayQty = parseFloat(line.quantity_used);
+    if (!displayQty || displayQty <= 0) return;
+    const stockQty = displayQty / line.factor;
     await supabase.from('product_supplies').upsert({
-      product_id: productId, supply_id: line.supply_id, quantity_used: qty,
+      product_id: productId, supply_id: line.supply_id, quantity_used: stockQty,
     });
   };
 
@@ -104,7 +135,7 @@ export default function RecipeEditor({ productId, basePrice, onChange }: Props) 
   };
 
   const totalCost = lines.reduce(
-    (a, l) => a + (parseFloat(l.quantity_used) || 0) * l.cost_per_unit, 0);
+    (a, l) => a + ((parseFloat(l.quantity_used) || 0) / l.factor) * l.cost_per_unit, 0);
   const costPercent = basePrice > 0 ? (totalCost / basePrice) * 100 : 0;
   const availableSupplies = supplies.filter((s) => !lines.some((l) => l.supply_id === s.id));
 
@@ -137,7 +168,7 @@ export default function RecipeEditor({ productId, basePrice, onChange }: Props) 
                 onChangeText={(v) => setQuantity(l.supply_id, v)}
                 onEndEditing={() => persistLine(l)}
               />
-              <Text style={styles.lineUnit}>{l.unit}</Text>
+              <Text style={styles.lineUnit}>{l.display_unit}</Text>
               <Pressable hitSlop={8} onPress={() => { removeLine(l.supply_id); persistRemoval(l.supply_id); }}>
                 <Ionicons name="close-circle" size={18} color="#ccc" />
               </Pressable>
@@ -165,7 +196,7 @@ export default function RecipeEditor({ productId, basePrice, onChange }: Props) 
               availableSupplies.map((s) => (
                 <Pressable key={s.id} style={styles.pickerRow} onPress={() => addSupply(s)}>
                   <Text style={styles.pickerName}>{s.name}</Text>
-                  <Text style={styles.pickerUnit}>{s.unit}</Text>
+                  <Text style={styles.pickerUnit}>{s.recipe_unit || s.unit}</Text>
                 </Pressable>
               ))
             )}

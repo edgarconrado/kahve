@@ -11,6 +11,11 @@ const SECTIONS: {
     icon: 'restaurant-outline',
   },
   {
+    route: '/(app)/admin/categories', title: 'Categorías',
+    subtitle: 'Renombrar, ordenar y eliminar categorías del menú',
+    icon: 'albums-outline',
+  },
+  {
     route: '/(app)/admin/team', title: 'Equipo',
     subtitle: 'Empleados, roles y permisos',
     icon: 'people-outline',
@@ -24,11 +29,6 @@ const SECTIONS: {
     route: '/(app)/admin/promotions', title: 'Promociones',
     subtitle: '2x1 y descuentos automáticos por cantidad',
     icon: 'pricetags-outline',
-  },
-  {
-    route: '/(app)/admin/loyalty', title: 'Clientes frecuentes',
-    subtitle: 'Premia a quien regresa seguido',
-    icon: 'heart-outline',
   },
 ];
 

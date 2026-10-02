@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import type { ColorValue } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { can } from '../../lib/permissions';
 
@@ -7,7 +8,7 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const icon =
   (name: IoniconName, nameOutline: IoniconName) =>
-    ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
+    ({ color, size, focused }: { color: ColorValue; size: number; focused: boolean }) =>
       <Ionicons name={focused ? name : nameOutline} size={size} color={color} />;
 
 export default function AppLayout() {
@@ -69,6 +70,8 @@ export default function AppLayout() {
         options={{ title: 'Equipo', href: null, headerShown: false }} />
       <Tabs.Screen name="admin/menu"
         options={{ title: 'Menú', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/categories"
+        options={{ title: 'Categorías', href: null, headerShown: false }} />
       <Tabs.Screen name="admin/promotions"
         options={{ title: 'Promociones', href: null, headerShown: false }} />
       <Tabs.Screen name="admin/supplies"

@@ -17,6 +17,13 @@ import RecipeEditor from '../../../components/RecipeEditor';
 interface Category { id: string; name: string }
 type ProductFull = Product & { modifiers: Modifier[] };
 
+// Redondea a 4 decimales y quita ceros sobrantes (evita cosas como
+// "500.00000001" al convertir entre unidad de stock y de receta).
+const formatQty = (n: number) => {
+  const rounded = Math.round(n * 10000) / 10000;
+  return String(rounded);
+};
+
 export default function Menu() {
   const { employee } = useAuth();
   const { tier } = usePlan(employee);
@@ -40,7 +47,9 @@ export default function Menu() {
   const [modifiers, setModifiers] = useState<
     { id?: string; name: string; price: string; supplyId: string | null; supplyQty: string }[]
   >([]);
-  const [supplies, setSupplies] = useState<{ id: string; name: string; unit: string }[]>([]);
+  const [supplies, setSupplies] = useState<
+    { id: string; name: string; unit: string; recipe_unit: string | null; recipe_unit_factor: number }[]
+  >([]);
   const [pickerForIndex, setPickerForIndex] = useState<number | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);      // preview local
   const [imageBase64, setImageBase64] = useState<string | null>(null); // pendiente de subir
@@ -65,7 +74,7 @@ export default function Menu() {
       .then(({ data }) => setCategories(data ?? []));
     supabase
       .from('supplies')
-      .select('id, name, unit')
+      .select('id, name, unit, recipe_unit, recipe_unit_factor')
       .eq('is_active', true)
       .order('name')
       .then(({ data }) => setSupplies(data ?? []));
@@ -104,13 +113,21 @@ export default function Menu() {
       });
     }
 
-    setModifiers(activeModifiers.map((m) => ({
-      id: m.id,
-      name: m.name,
-      price: String(m.price_delta),
-      supplyId: supplyByModifier[m.id]?.supply_id ?? null,
-      supplyQty: supplyByModifier[m.id] ? String(supplyByModifier[m.id].quantity_used) : '',
-    })));
+    setModifiers(activeModifiers.map((m) => {
+      const supplyId = supplyByModifier[m.id]?.supply_id ?? null;
+      const stockQty = supplyByModifier[m.id]?.quantity_used;
+      const supply = supplyId ? supplies.find((s) => s.id === supplyId) : null;
+      const factor = supply?.recipe_unit ? (supply.recipe_unit_factor || 1) : 1;
+      return {
+        id: m.id,
+        name: m.name,
+        price: String(m.price_delta),
+        supplyId,
+        // quantity_used en BD siempre está en unidad de stock; aquí se
+        // muestra en la unidad de receta del insumo (si tiene una).
+        supplyQty: stockQty != null ? formatQty(stockQty * factor) : '',
+      };
+    }));
     setImageUri(p.image_url); setImageBase64(null);
     setRecipeLines([]); // RecipeEditor carga la receta existente solo, vía productId
     setShowForm(true);
@@ -144,29 +161,6 @@ export default function Menu() {
 
   const canSave = name.trim() && parseFloat(price) >= 0
     && (categoryId || newCategory.trim()) && !busy;
-
-  const deactivateProduct = () => {
-    if (!editing) return;
-    Alert.alert(
-      `Desactivar "${editing.name}"`,
-      'Ya no aparecerá en Vender ni en el Menú. Tu historial de ventas y ' +
-      'reportes con este producto se conserva sin cambios — solo se oculta ' +
-      'para nuevas ventas. Puedes pedirnos que lo reactivemos si lo necesitas.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Desactivar', style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase
-              .from('products').update({ is_active: false }).eq('id', editing.id);
-            if (error) { Alert.alert('Error', error.message); return; }
-            setShowForm(false);
-            load();
-          },
-        },
-      ],
-    );
-  };
 
   const save = async () => {
     if (!employee) return;
@@ -287,10 +281,14 @@ export default function Menu() {
 
         // Insumo adicional del modificador (opcional)
         if (modifierId) {
-          const qty = parseFloat(m.supplyQty);
-          if (m.supplyId && qty > 0) {
+          const displayQty = parseFloat(m.supplyQty);
+          if (m.supplyId && displayQty > 0) {
+            const supply = supplies.find((s) => s.id === m.supplyId);
+            const factor = supply?.recipe_unit ? (supply.recipe_unit_factor || 1) : 1;
+            // m.supplyQty está en la unidad de receta del insumo; se
+            // guarda en la unidad de stock, como espera la base de datos.
             await supabase.from('modifier_supplies').upsert({
-              modifier_id: modifierId, supply_id: m.supplyId, quantity_used: qty,
+              modifier_id: modifierId, supply_id: m.supplyId, quantity_used: displayQty / factor,
             });
           } else {
             await supabase.from('modifier_supplies')
@@ -553,7 +551,10 @@ export default function Menu() {
                           ? { ...x, supplyQty: v.replace(/[^0-9.]/g, '') } : x)))}
                     />
                     <Text style={styles.modSupplyUnit}>
-                      {supplies.find((s) => s.id === m.supplyId)?.unit ?? ''}
+                      {(() => {
+                        const s = supplies.find((sp) => sp.id === m.supplyId);
+                        return s?.recipe_unit || s?.unit || '';
+                      })()}
                     </Text>
                     <Pressable hitSlop={8}
                       onPress={() => setModifiers((ms) =>
@@ -591,7 +592,7 @@ export default function Menu() {
                           setPickerForIndex(null);
                         }}>
                         <Text style={styles.pickerName}>{s.name}</Text>
-                        <Text style={styles.pickerUnit}>{s.unit}</Text>
+                        <Text style={styles.pickerUnit}>{s.recipe_unit || s.unit}</Text>
                       </Pressable>
                     ))
                   )}
@@ -619,13 +620,6 @@ export default function Menu() {
                 {busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear producto'}
               </Text>
             </Pressable>
-
-            {editing && (
-              <Pressable style={styles.deactivateButton} onPress={deactivateProduct}>
-                <Ionicons name="eye-off-outline" size={15} color="#A32D2D" />
-                <Text style={styles.deactivateText}>Desactivar producto</Text>
-              </Pressable>
-            )}
           </ScrollView>
         </View>
               </KeyboardAvoidingView>
@@ -737,10 +731,4 @@ const styles = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center', marginTop: 8,
   },
   saveText: { color: '#FAECE7', fontSize: 15, fontWeight: '600' },
-  deactivateButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1, borderColor: '#A32D2D', borderRadius: 10,
-    paddingVertical: 12, marginTop: 4,
-  },
-  deactivateText: { color: '#A32D2D', fontWeight: '600', fontSize: 13 },
 });

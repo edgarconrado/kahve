@@ -53,19 +53,25 @@ export default function Profile() {
   const [pin1, setPin1] = useState('');
   const [pin2, setPin2] = useState('');
   const [busy, setBusy] = useState(false);
-  const [org, setOrg] = useState<{ name: string; slug: string } | null>(null);
+  const [org, setOrg] = useState<{ name: string; slug: string; logo_url: string | null } | null>(null);
   const [branch, setBranch] = useState<{ name: string; address: string | null } | null>(null);
 
   // Datos de la cafetería (organización y, si aplica, sucursal del empleado)
   useFocusEffect(
     useCallback(() => {
       if (!employee) return;
-      supabase
+      let active = true;
+
+      const loadOrganization = async () => {
+        const { data, error } = await supabase
         .from('organizations')
         .select('name, slug, logo_url')
         .eq('id', employee.organization_id)
         .single()
-        .then(({ data }) => setOrg(data));
+        if (active && data && !error) setOrg(data);
+      };
+
+      loadOrganization();
 
       if (employee.branch_id) {
         supabase
@@ -77,6 +83,10 @@ export default function Profile() {
       } else {
         setBranch(null); // admin sin sucursal fija = acceso a todas
       }
+
+      return () => {
+        active = false;
+      };
     }, [employee?.organization_id, employee?.branch_id]),
   );
 
@@ -200,8 +210,11 @@ export default function Profile() {
       return;
     }
     const logoUrl = supabase.storage.from('product-images').getPublicUrl(filePath).data.publicUrl;
-    const { error } = await supabase.from('organizations')
-      .update({ logo_url: logoUrl }).eq('id', employee.organization_id);
+    // Nota: organizations no admite UPDATE directo desde el cliente (RLS
+    // solo tiene política de SELECT, a propósito, para proteger columnas
+    // como plan/stripe). Por eso el logo se guarda vía RPC, que solo
+    // toca logo_url y valida que quien llama sea admin de su org.
+    const { error } = await supabase.rpc('update_org_logo', { p_logo_url: logoUrl });
     setUploadingLogo(false);
     if (error) { Alert.alert('Error', error.message); return; }
     setOrg((o) => o ? { ...o, logo_url: logoUrl } : o);

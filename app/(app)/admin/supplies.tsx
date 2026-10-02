@@ -18,9 +18,18 @@ interface Supply {
   cost_per_unit: number;
   is_resale: boolean;
   is_active: boolean;
+  recipe_unit: string | null;
+  recipe_unit_factor: number;
 }
 
 const UNIT_SUGGESTIONS = ['g', 'kg', 'ml', 'l', 'pieza'];
+
+// Pares de unidad de stock → unidad de receta sugerida, con su factor
+// (cuántas unidades de receta hay en 1 unidad de stock).
+const RECIPE_UNIT_SUGGESTIONS: Record<string, { unit: string; factor: string }> = {
+  l: { unit: 'ml', factor: '1000' },
+  kg: { unit: 'g', factor: '1000' },
+};
 
 export default function Supplies() {
   const { employee } = useAuth();
@@ -36,6 +45,12 @@ export default function Supplies() {
   const [threshold, setThreshold] = useState('');
   const [isResale, setIsResale] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Unidad para recetas (opcional): captura la receta en una unidad más
+  // chica que la de stock (ej. stock en litros, receta en mililitros).
+  const [useRecipeUnit, setUseRecipeUnit] = useState(false);
+  const [recipeUnit, setRecipeUnit] = useState('');
+  const [recipeUnitFactor, setRecipeUnitFactor] = useState('');
 
   // Compra / merma
   const [purchaseTarget, setPurchaseTarget] = useState<Supply | null>(null);
@@ -65,6 +80,7 @@ export default function Supplies() {
     if (tier === 'free') { proFeatureAlert('El control de insumos'); return; }
     setEditTarget(null);
     setName(''); setUnit('g'); setThreshold(''); setIsResale(false);
+    setUseRecipeUnit(false); setRecipeUnit(''); setRecipeUnitFactor('');
     setShowForm(true);
   };
 
@@ -72,12 +88,30 @@ export default function Supplies() {
     setEditTarget(s);
     setName(s.name); setUnit(s.unit);
     setThreshold(String(s.low_stock_threshold)); setIsResale(s.is_resale);
+    setUseRecipeUnit(!!s.recipe_unit);
+    setRecipeUnit(s.recipe_unit ?? '');
+    setRecipeUnitFactor(s.recipe_unit ? String(s.recipe_unit_factor) : '');
     setShowForm(true);
+  };
+
+  // Al elegir la unidad de stock, si tenemos una sugerencia de receta
+  // para ella (l → ml, kg → g) y el cajero aún no había activado ni
+  // llenado la unidad de receta, la proponemos de una vez.
+  const pickUnit = (u: string) => {
+    setUnit(u);
+    const suggestion = RECIPE_UNIT_SUGGESTIONS[u];
+    if (suggestion && !useRecipeUnit && !recipeUnit) {
+      setUseRecipeUnit(true);
+      setRecipeUnit(suggestion.unit);
+      setRecipeUnitFactor(suggestion.factor);
+    }
   };
 
   const missing = [
     !name.trim() && 'nombre',
     !unit.trim() && 'unidad',
+    useRecipeUnit && !recipeUnit.trim() && 'unidad de receta',
+    useRecipeUnit && !(parseFloat(recipeUnitFactor) > 0) && 'equivalencia',
   ].filter(Boolean) as string[];
 
   const saveSupply = async () => {
@@ -88,6 +122,8 @@ export default function Supplies() {
       unit: unit.trim(),
       low_stock_threshold: parseFloat(threshold) || 0,
       is_resale: isResale,
+      recipe_unit: useRecipeUnit ? recipeUnit.trim() : null,
+      recipe_unit_factor: useRecipeUnit ? (parseFloat(recipeUnitFactor) || 1) : 1,
     };
     const { error } = editTarget
       ? await supabase.from('supplies').update(payload).eq('id', editTarget.id)
@@ -266,7 +302,7 @@ export default function Supplies() {
             <Text style={styles.label}>Unidad de medida</Text>
             <View style={styles.chipRow}>
               {UNIT_SUGGESTIONS.map((u) => (
-                <Pressable key={u} style={[styles.chip, unit === u && styles.chipOn]} onPress={() => setUnit(u)}>
+                <Pressable key={u} style={[styles.chip, unit === u && styles.chipOn]} onPress={() => pickUnit(u)}>
                   <Text style={[styles.chipText, unit === u && styles.chipTextOn]}>{u}</Text>
                 </Pressable>
               ))}
@@ -277,6 +313,45 @@ export default function Supplies() {
             <TextInput style={styles.input} placeholder="Avisar cuando quede menos de (opcional)"
               placeholderTextColor="#9A9A9A" keyboardType="decimal-pad"
               value={threshold} onChangeText={setThreshold} />
+
+            <View style={styles.switchRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.switchLabel}>Capturar receta en otra unidad</Text>
+                <Text style={styles.switchHint}>
+                  Ej. compras y controlas el stock en litros, pero en la receta
+                  quieres poner mililitros en vez de decimales como 0.2.
+                </Text>
+              </View>
+              <Switch value={useRecipeUnit} onValueChange={setUseRecipeUnit} />
+            </View>
+
+            {useRecipeUnit && (
+              <View>
+                {!!RECIPE_UNIT_SUGGESTIONS[unit] && (
+                  <Pressable
+                    style={styles.suggestionPill}
+                    onPress={() => {
+                      const s = RECIPE_UNIT_SUGGESTIONS[unit];
+                      setRecipeUnit(s.unit);
+                      setRecipeUnitFactor(s.factor);
+                    }}>
+                    <Text style={styles.suggestionPillText}>
+                      Usar sugerencia: 1 {unit || '?'} = {RECIPE_UNIT_SUGGESTIONS[unit].factor} {RECIPE_UNIT_SUGGESTIONS[unit].unit}
+                    </Text>
+                  </Pressable>
+                )}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TextInput style={[styles.input, { flex: 1 }]} placeholder="Unidad de receta (ej. ml)"
+                    placeholderTextColor="#9A9A9A" value={recipeUnit} onChangeText={setRecipeUnit} />
+                  <TextInput style={[styles.input, { flex: 1 }]} placeholder="Equivalencia (ej. 1000)"
+                    placeholderTextColor="#9A9A9A" keyboardType="decimal-pad"
+                    value={recipeUnitFactor} onChangeText={setRecipeUnitFactor} />
+                </View>
+                <Text style={styles.switchHint}>
+                  1 {unit || '(unidad de stock)'} = {recipeUnitFactor || '?'} {recipeUnit || '(unidad de receta)'}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.switchRow}>
               <View style={{ flex: 1 }}>
@@ -410,6 +485,11 @@ const styles = StyleSheet.create({
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
   switchLabel: { fontSize: 13.5, color: '#333', fontWeight: '600' },
   switchHint: { fontSize: 11.5, color: '#999', marginTop: 2 },
+  suggestionPill: {
+    alignSelf: 'flex-start', backgroundColor: '#FAECE7', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 6, marginBottom: 8,
+  },
+  suggestionPillText: { fontSize: 12, color: '#4A1B0C', fontWeight: '600' },
   missing: { fontSize: 12, color: '#A32D2D' },
   saveButton: { backgroundColor: '#4A1B0C', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
   saveButtonText: { color: '#FAECE7', fontSize: 15, fontWeight: '600' },

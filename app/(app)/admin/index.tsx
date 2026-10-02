@@ -31,6 +31,11 @@ const SECTIONS: {
     icon: 'pricetags-outline',
   },
   {
+    route: '/(app)/admin/taxes', title: 'Impuestos',
+    subtitle: 'Configurar el IVA incluido en las ventas',
+    icon: 'receipt-outline',
+  },
+  {
     route: '/(app)/printer', title: 'Impresora',
     subtitle: 'Configurar impresora térmica y ancho de papel',
     icon: 'print-outline',

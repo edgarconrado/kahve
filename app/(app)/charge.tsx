@@ -46,6 +46,7 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
   const [discount, setDiscount] = useState(0);
   const [showDiscount, setShowDiscount] = useState(false);
   const [customDiscount, setCustomDiscount] = useState('');
+  const [taxRate, setTaxRate] = useState(16);
 
   const { tier } = usePlan(employee);
   const [tip, setTip] = useState(0);
@@ -105,6 +106,18 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
     }, [tier]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!employee?.organization_id) return;
+      supabase
+        .from('organizations')
+        .select('tax_rate')
+        .eq('id', employee.organization_id)
+        .single()
+        .then(({ data }) => setTaxRate(Number(data?.tax_rate ?? 16)));
+    }, [employee?.organization_id]),
+  );
+
   const gross = cart.subtotal();
   // Las promociones se aplican SIEMPRE primero, automático — no cuentan
   // contra el límite de descuento manual del cajero, porque no fue él
@@ -115,7 +128,8 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
   );
   const afterAutomatic = Math.max(+(gross - promoDiscount - loyaltyDiscount).toFixed(2), 0);
   const discounted = Math.max(+(afterAutomatic - discount).toFixed(2), 0);
-  const { subtotal, tax, total } = cartTotals(discounted);
+  const taxRatePercent = Math.min(Math.max(taxRate, 0), 100);
+  const { subtotal, tax, total } = cartTotals(discounted, taxRatePercent);
   // La propina se suma al cobro pero NO es venta: viaja aparte en payments.tip
   const grandTotal = +(total + tip).toFixed(2);
 
@@ -196,7 +210,8 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
               ? `<tr class="tot"><td>Promoción</td><td style="text-align:right">−$${info.promoDiscount.toFixed(2)}</td></tr>` : ''}
             ${info.discount > 0
               ? `<tr class="tot"><td>Descuento</td><td style="text-align:right">−$${info.discount.toFixed(2)}</td></tr>` : ''}
-            <tr class="tot"><td>IVA incluido</td><td style="text-align:right">$${info.tax.toFixed(2)}</td></tr>
+            ${info.tax > 0
+              ? `<tr class="tot"><td>IVA incluido</td><td style="text-align:right">$${info.tax.toFixed(2)}</td></tr>` : ''}
             ${info.tip > 0
               ? `<tr class="tot"><td>Propina</td><td style="text-align:right">$${info.tip.toFixed(2)}</td></tr>` : ''}
             <tr class="grand"><td>Total</td><td style="text-align:right">$${(info.total + info.tip).toFixed(2)}</td></tr>
@@ -407,7 +422,7 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
             promoDiscount > 0 ? `Promo −$${promoDiscount.toFixed(2)}` : null,
             discount > 0 ? `Descuento −$${discount.toFixed(2)}` : null,
             tip > 0 ? `Venta $${total.toFixed(2)} + propina $${tip.toFixed(2)}` : null,
-            `IVA incluido $${tax.toFixed(2)}`,
+            tax > 0 ? `IVA ${taxRatePercent}% · $${tax.toFixed(2)}` : null,
           ].filter(Boolean).join(' · ')}
         </Text>
       </View>

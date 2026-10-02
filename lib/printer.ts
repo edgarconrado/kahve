@@ -174,7 +174,7 @@ function buildReceiptPayload(r: ReceiptData, charsPerLine: number): string {
     if (r.loyaltyDiscount > 0) out += line('Cliente frecuente', `-${money(r.loyaltyDiscount)}`) + '\n';
     if (r.promoDiscount > 0) out += line('Promocion', `-${money(r.promoDiscount)}`) + '\n';
     if (r.discount > 0) out += line('Descuento', `-${money(r.discount)}`) + '\n';
-    out += line('IVA incluido', money(r.tax)) + '\n';
+    if (r.tax > 0) out += line('IVA incluido', money(r.tax)) + '\n';
     if (r.tip > 0) out += line('Propina', money(r.tip)) + '\n';
   }
   out += line('TOTAL', money(r.total)) + '\n';

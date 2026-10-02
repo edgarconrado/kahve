@@ -81,7 +81,7 @@ export default function TicketSheet({ visible, onClose, onCheckout }: Props) {
 
           <View style={styles.footer}>
             <View>
-              <Text style={styles.footerLabel}>Total · IVA incluido</Text>
+              <Text style={styles.footerLabel}>Total</Text>
               <Text style={styles.footerTotal}>${total.toFixed(2)}</Text>
             </View>
             <Pressable

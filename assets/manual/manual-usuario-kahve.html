@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual de usuario - Kahve</title>
+<style>
+  @page { size: A4; margin: 13mm 14mm 15mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #2e211d; font-family: "Segoe UI", sans-serif; font-size: 10.5pt; line-height: 1.42; }
+  h1, h2, h3 { color: #4a1b0c; margin: 0 0 8px; page-break-after: avoid; }
+  h1 { font-size: 29pt; line-height: 1.05; }
+  h2 { font-size: 20pt; border-bottom: 2px solid #e9b39f; padding-bottom: 5px; }
+  h3 { font-size: 13pt; margin-top: 14px; }
+  p { margin: 5px 0 9px; }
+  ul, ol { margin: 5px 0 10px 20px; padding: 0; }
+  li { margin: 3px 0; }
+  .page { page-break-before: always; }
+  .keep { break-inside: avoid; }
+  .cover { height: 268mm; display: flex; flex-direction: column; justify-content: space-between; background: #faece7; margin: -13mm -14mm -15mm; padding: 24mm 20mm 18mm; position: relative; overflow: hidden; }
+  .cover:after { content: ""; position: absolute; width: 125mm; height: 125mm; border: 18mm solid #d88a6a; border-radius: 50%; right: -55mm; bottom: -48mm; opacity: .34; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand img { width: 34mm; height: 34mm; border-radius: 8mm; }
+  .brand strong { display: block; font-size: 26pt; color: #4a1b0c; }
+  .brand span { color: #88503d; font-size: 12pt; }
+  .cover-copy { max-width: 145mm; position: relative; z-index: 1; }
+  .cover-copy p { color: #744331; font-size: 14pt; max-width: 125mm; }
+  .meta { color: #744331; font-size: 10pt; position: relative; z-index: 1; }
+  .toc { columns: 2; column-gap: 16mm; }
+  .toc p { margin: 0 0 7px; break-inside: avoid; }
+  .toc b { color: #4a1b0c; }
+  .callout { background: #faece7; border-left: 4px solid #d88a6a; padding: 9px 11px; margin: 10px 0; break-inside: avoid; }
+  .pro { background: #e4f3ed; border-left-color: #16705b; }
+  .warning { background: #fff3d8; border-left-color: #c8891c; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.5pt; break-inside: avoid; }
+  th { background: #4a1b0c; color: white; text-align: left; }
+  th, td { border: 1px solid #ddcec8; padding: 6px 7px; vertical-align: top; }
+  tr:nth-child(even) td { background: #fcf7f5; }
+  .shot { width: 75mm; height: 157mm; display: block; object-fit: cover; object-position: top; border: 1px solid #d9cbc5; border-radius: 5mm; margin: 9px auto 12px; box-shadow: 0 2mm 5mm rgba(74,27,12,.12); }
+  .shot-short { height: 119mm; }
+  .shot-wrap { width: 75mm; height: 150mm; position: relative; margin: 9px auto 12px; overflow: hidden; border: 1px solid #d9cbc5; border-radius: 5mm; }
+  .shot-wrap img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  .redact { position: absolute; left: 24%; top: 31.5%; width: 53%; height: 2.3%; background: #fff; border-radius: 2px; }
+  .caption { text-align: center; color: #76625b; font-size: 8.5pt; margin-top: -7px; }
+  .steps { counter-reset: item; list-style: none; margin-left: 0; }
+  .steps li { counter-increment: item; padding-left: 28px; position: relative; margin: 7px 0; }
+  .steps li:before { content: counter(item); position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; background: #4a1b0c; color: white; text-align: center; line-height: 20px; font-weight: 700; font-size: 8pt; }
+  .footer-note { color: #7f6b64; font-size: 8pt; margin-top: 12px; }
+</style>
+</head>
+<body>
+<section class="cover">
+  <div class="brand"><img src="../icon.png" alt="Logo Kahve"><div><strong>Kahve</strong><span>Punto de venta para cafeterías</span></div></div>
+  <div class="cover-copy"><h1>Manual de usuario</h1><p>Guía práctica para administrar el menú, vender, preparar órdenes, cobrar, controlar turnos y consultar resultados.</p></div>
+  <div class="meta">Edición 2.0 · Octubre de 2026<br>Android · Roles: barista, cajero, supervisor y administrador</div>
+</section>
+
+<section class="page">
+<h2>Contenido</h2>
+<div class="toc">
+<p><b>1.</b> Conceptos básicos</p><p><b>2.</b> Registro e inicio de sesión</p><p><b>3.</b> Roles y permisos</p><p><b>4.</b> Abrir un turno</p><p><b>5.</b> Vender</p><p><b>6.</b> Cobrar</p><p><b>7.</b> Cola de preparación</p><p><b>8.</b> Cerrar turno</p><p><b>9.</b> Reportes</p><p><b>10.</b> Administración</p><p><b>11.</b> Menú y categorías</p><p><b>12.</b> Equipo</p><p><b>13.</b> Insumos</p><p><b>14.</b> Promociones</p><p><b>15.</b> Clientes frecuentes</p><p><b>16.</b> Impresora y tickets</p><p><b>17.</b> Tablero de órdenes</p><p><b>18.</b> Perfil y seguridad</p><p><b>19.</b> Kahve Pro</p><p><b>20.</b> Solución de problemas</p>
+</div>
+<h3>1. Conceptos básicos</h3>
+<p>Kahve organiza el trabajo de la cafetería en cinco áreas principales: <b>Vender</b>, <b>Cola</b>, <b>Reportes</b>, <b>Admin</b> y <b>Perfil</b>. La barra inferior muestra únicamente las áreas permitidas para el rol de la persona que inició sesión.</p>
+<div class="callout"><b>Antes de vender:</b> debe existir un turno abierto. Los productos, precios y disponibilidad se administran desde Admin.</div>
+<h3>2. Registro e inicio de sesión</h3>
+<ol class="steps"><li>En la pantalla inicial escribe tu correo.</li><li>Introduce tu PIN de 4 a 6 dígitos.</li><li>Pulsa <b>Entrar</b>.</li></ol>
+<p>Para crear una cafetería nueva, usa <b>Registra tu cafetería</b> e introduce nombre de la cafetería, sucursal, nombre del administrador, correo, PIN y confirmación.</p>
+<div class="warning callout"><b>No compartas tu PIN.</b> Si no puedes entrar, solicita al administrador que verifique que tu empleado esté activo y que el correo sea correcto.</div>
+</section>
+
+<section class="page">
+<h2>3. Roles y permisos</h2>
+<table><tr><th>Rol</th><th>Uso principal</th><th>Acceso habitual</th></tr><tr><td>Barista</td><td>Preparar pedidos</td><td>Cola y estados de órdenes</td></tr><tr><td>Cajero</td><td>Registrar ventas</td><td>Vender, cobrar, turnos y cola</td></tr><tr><td>Supervisor</td><td>Supervisar operación</td><td>Ventas, cancelaciones y reportes</td></tr><tr><td>Administrador</td><td>Configurar la cafetería</td><td>Todos los módulos, equipo y catálogo</td></tr></table>
+<h3>4. Abrir un turno</h3>
+<ol class="steps"><li>Entra en <b>Perfil</b> y selecciona <b>Abrir turno</b>.</li><li>Captura el fondo inicial de caja.</li><li>Confirma. La pestaña Vender quedará disponible.</li></ol>
+<p>Solo puede haber un turno operativo por caja o sucursal según la configuración. El sistema asocia las ventas, pagos y movimientos al turno abierto.</p>
+<h3>5. Vender</h3>
+<ol class="steps"><li>Abre <b>Vender</b>.</li><li>Busca un producto o filtra por categoría.</li><li>Toca el producto. Si tiene modificadores, selecciona las opciones y confirma.</li><li>Revisa cantidades y notas en el ticket lateral.</li><li>Pulsa <b>Cobrar</b>.</li></ol>
+<img class="shot shot-short" src="capturas/01-vender.png" alt="Pantalla Vender">
+<p class="caption">Pantalla de venta con categorías, productos y ticket activo.</p>
+<div class="callout"><b>Producto agotado:</b> una tarjeta marcada como agotada no puede agregarse al carrito. El administrador puede cambiar su disponibilidad desde Menú.</div>
+</section>
+
+<section class="page">
+<h2>6. Cobrar</h2>
+<p>La pantalla de cobro resume productos, modificadores, descuentos, IVA y total. También permite identificar al cliente y elegir si la orden es para llevar o consumir en el local.</p>
+<img class="shot shot-short" src="capturas/05-perfil.png" alt="Perfil de usuario" style="display:none">
+<img class="shot shot-short" src="capturas/01-vender.png" alt="Flujo de cobro">
+<h3>Métodos de pago</h3>
+<ul><li><b>Efectivo:</b> captura lo recibido; Kahve calcula el cambio.</li><li><b>Tarjeta:</b> selecciona débito o crédito; la referencia es opcional.</li><li><b>Transferencia:</b> la referencia es obligatoria.</li><li><b>Plataforma:</b> indica Uber Eats, DiDi, Rappi u otra referencia.</li></ul>
+<h3>Descuentos, propina y lealtad</h3>
+<p>Los cajeros pueden aplicar descuento manual hasta el límite autorizado; supervisores y administradores tienen mayor capacidad. La propina puede ser 5%, 10%, 15% o un monto personalizado.</p>
+<div class="pro callout"><b>Kahve Pro:</b> al escribir el teléfono del cliente, el sistema consulta su progreso de lealtad. La recompensa se aplica solo cuando el producto premiado está en el ticket.</div>
+<h3>Finalizar</h3>
+<ol class="steps"><li>Verifica total y método.</li><li>Pulsa <b>Cobrar</b>.</li><li>Elige <b>Imprimir</b>, <b>Enviar ticket</b> o <b>Listo</b>.</li></ol>
+</section>
+
+<section class="page">
+<h2>7. Cola de preparación</h2>
+<p>La cola recibe órdenes en tiempo real. Un sonido y vibración avisan cuando entra una nueva orden.</p>
+<img class="shot shot-short" src="capturas/02-cola.png" alt="Cola de preparación">
+<p class="caption">Cola con métricas de pendientes, preparación y órdenes listas.</p>
+<table><tr><th>Estado</th><th>Acción</th></tr><tr><td>Pagada</td><td>Pulsa <b>Iniciar</b> para comenzar la preparación.</td></tr><tr><td>En preparación</td><td>Revisa productos, modificadores y notas; después pulsa <b>Marcar lista</b>.</td></tr><tr><td>Lista</td><td>Desde Historial puede marcarse como entregada.</td></tr><tr><td>Cancelada</td><td>Solo un rol autorizado puede cancelar e indicar el motivo.</td></tr></table>
+<p>Las órdenes con demasiado tiempo se resaltan para priorizarlas. <b>Historial</b> muestra las órdenes terminadas y canceladas del día.</p>
+<h3>8. Cerrar turno</h3>
+<ol class="steps"><li>En Perfil abre <b>Corte de caja</b>.</li><li>Registra retiros o depósitos con monto y motivo.</li><li>Cuenta billetes de $1,000, $500, $200, $100, $50 y $20.</li><li>Captura el total de monedas.</li><li>Compara efectivo esperado y contado.</li><li>Confirma <b>Cerrar turno</b> y, si corresponde, imprime o envía el corte.</li></ol>
+<div class="warning callout">Una diferencia fuera de la tolerancia requiere autorización de supervisor o administrador.</div>
+</section>
+
+<section class="page">
+<h2>9. Reportes</h2>
+<p>Disponible para supervisor y administrador. Resume ventas, órdenes, ticket promedio, tiempo de preparación, consumo local/para llevar y métodos de pago.</p>
+<h3>Consultar información</h3>
+<ol class="steps"><li>Abre <b>Reportes</b>.</li><li>Selecciona Hoy, Semana, Mes o Año.</li><li>Revisa el gráfico de ventas, métodos de pago y productos más vendidos.</li><li>Abre Tickets para consultar el detalle reciente.</li><li>En Pro, usa Exportar para crear y compartir el PDF.</li></ol>
+<table><tr><th>Periodo</th><th>Visualización</th></tr><tr><td>Hoy</td><td>Ventas por hora.</td></tr><tr><td>Semana / Mes</td><td>Ventas por día.</td></tr><tr><td>Año</td><td>Ventas por mes.</td></tr></table>
+<div class="pro callout"><b>Kahve Pro:</b> habilita periodos extendidos, exportación y detalle de insumos, compras, consumo, merma y stock bajo.</div>
+<h2 style="margin-top:18px">10. Administración</h2>
+<img class="shot shot-short" src="capturas/04-admin.png" alt="Hub de administración">
+<p class="caption">Accesos a Menú, Categorías, Equipo, Insumos, Promociones e Impresora.</p>
+</section>
+
+<section class="page">
+<h2>11. Menú y categorías</h2>
+<h3>Crear o editar un producto</h3>
+<ol class="steps"><li>Ve a Admin → <b>Menú</b>.</li><li>Pulsa + para crear o toca una tarjeta para editar.</li><li>Captura nombre, precio, descripción y categoría.</li><li>Agrega modificadores y sus incrementos de precio.</li><li>En Pro, añade foto y receta por insumos.</li><li>Guarda y verifica el producto en Vender.</li></ol>
+<p>El interruptor <b>Disponible/Agotado</b> controla si el producto se puede vender sin eliminar su historial.</p>
+<h3>Organizar categorías</h3>
+<ol class="steps"><li>Ve a Admin → <b>Categorías</b>.</li><li>Crea, renombra o cambia el orden.</li><li>Para eliminar una categoría con productos, elige otra categoría de destino.</li></ol>
+<div class="callout">No elimines productos para retirarlos temporalmente: márcalos como agotados o desactívalos.</div>
+<h2 style="margin-top:18px">12. Equipo</h2>
+<ol class="steps"><li>Ve a Admin → <b>Equipo</b>.</li><li>Pulsa + e introduce nombre, correo, PIN, rol y sucursal.</li><li>Para cambiar rol o desactivar, toca al empleado.</li></ol>
+<p>No puedes editar tu propia sesión desde la lista. En el plan gratuito existe un límite de empleados activos.</p>
+</section>
+
+<section class="page">
+<h2>13. Insumos</h2>
+<p>Administra existencias, compras, mermas y unidades utilizadas en recetas.</p>
+<ol class="steps"><li>Ve a Admin → <b>Insumos</b>.</li><li>Crea el insumo con nombre, unidad y umbral de stock bajo.</li><li>Si la receta usa otra unidad, define la conversión; por ejemplo, 1 kg = 1,000 g.</li><li>Usa <b>Compra</b> para aumentar stock y registrar costo.</li><li>Usa <b>Merma</b> para descontar cantidad e indicar motivo.</li></ol>
+<div class="pro callout">Los productos con receta consumen insumos al venderse. Revisa las alertas de stock bajo antes de iniciar operación.</div>
+<h2 style="margin-top:18px">14. Promociones</h2>
+<p>Kahve admite tres tipos:</p>
+<ul><li><b>2x1:</b> una unidad queda gratis al alcanzar la cantidad.</li><li><b>Segunda con descuento:</b> aplica un porcentaje a la unidad de recompensa.</li><li><b>Combo:</b> comprar un producto entrega otro gratis o con descuento.</li></ul>
+<p>Selecciona producto o categoría, configura condiciones, revisa el nombre y activa la promoción. Las promociones activas se aplican automáticamente al cobrar.</p>
+<h2 style="margin-top:18px">15. Clientes frecuentes</h2>
+<ol class="steps"><li>Abre Admin → <b>Clientes frecuentes</b>.</li><li>Selecciona sucursal.</li><li>Define visitas requeridas y producto premio.</li><li>Elige gratis o porcentaje de descuento y activa el programa.</li></ol>
+<p>En el cobro, el teléfono es voluntario. Informa al cliente sobre su uso conforme al Aviso de Privacidad.</p>
+</section>
+
+<section class="page">
+<h2>16. Impresora y tickets</h2>
+<p>La búsqueda Bluetooth está disponible en Android. La impresora debe emparejarse primero desde Ajustes del sistema.</p>
+<div style="height:119mm;overflow:hidden"><img class="shot" style="margin-top:0" src="diagnostico.png" alt="Configuración de impresora"></div>
+<p class="caption">Configuración de impresora, papel y contenido del ticket.</p>
+<ol class="steps"><li>Ve a Admin → <b>Impresora</b>.</li><li>Elige papel de 58 mm u 80 mm.</li><li>Pulsa <b>Buscar impresoras emparejadas</b>.</li><li>Selecciona la impresora.</li><li>Activa o desactiva logo, orden/fecha, cliente, modificadores y detalles de pago.</li><li>Define el texto del pie del ticket.</li></ol>
+<div class="warning callout"><b>Si no aparece:</b> confirma que Bluetooth esté encendido, la impresora esté emparejada y Kahve tenga permisos de Dispositivos cercanos.</div>
+<h3>Logo descentrado</h3><p>Comprueba que el ancho de papel seleccionado coincida con el rollo. Kahve utiliza el área imprimible real para centrar el logotipo.</p>
+</section>
+
+<section class="page">
+<h2>17. Tablero de órdenes</h2>
+<p>Desde Cola, el botón <b>Tablero</b> abre una vista para clientes con las órdenes listas y las que siguen en preparación. Está diseñada para una pantalla visible desde la barra.</p>
+<ol class="steps"><li>Abre Cola.</li><li>Pulsa Tablero.</li><li>Coloca el dispositivo en un lugar visible.</li><li>Usa Atrás para volver a la operación.</li></ol>
+<div class="pro callout">El Tablero es una función Kahve Pro y se actualiza en tiempo real.</div>
+<h2 style="margin-top:18px">18. Perfil y seguridad</h2>
+<div class="shot-wrap"><img src="capturas/05-perfil.png" alt="Perfil"><span class="redact" aria-label="Correo oculto"></span></div>
+<p class="caption">Perfil, organización, plan, permisos y estadísticas del turno. El correo se ocultó en este manual.</p>
+<ul><li><b>Cambiar PIN:</b> establece un nuevo PIN personal.</li><li><b>Historial de turnos:</b> consulta los últimos cierres.</li><li><b>Aviso de Privacidad y Términos:</b> abre los documentos legales.</li><li><b>Contáctanos:</b> inicia soporte por WhatsApp.</li><li><b>Cerrar sesión:</b> termina el acceso en el dispositivo.</li><li><b>Eliminar mi cuenta:</b> acción permanente que requiere confirmación.</li></ul>
+<div class="warning callout">Nunca compartas capturas que muestren correos, teléfonos, importes sensibles o datos de clientes.</div>
+</section>
+
+<section class="page">
+<h2>19. Kahve Pro</h2>
+<table><tr><th>Función</th><th>Free</th><th>Pro / Prueba</th></tr><tr><td>Empleados</td><td>Hasta 3 activos</td><td>Ilimitados</td></tr><tr><td>Reportes</td><td>Hoy</td><td>Semana, mes, año y exportación</td></tr><tr><td>Fotos y recetas</td><td>No</td><td>Sí</td></tr><tr><td>Insumos y mermas</td><td>No</td><td>Sí</td></tr><tr><td>Promociones y lealtad</td><td>No</td><td>Sí</td></tr><tr><td>Tablero y envío de tickets</td><td>No</td><td>Sí</td></tr></table>
+<p>El administrador puede consultar el plan desde Perfil → Kahve Pro. Las opciones de contratación pueden variar según plataforma y tipo de compilación.</p>
+<h2 style="margin-top:18px">20. Solución de problemas</h2>
+<table><tr><th>Problema</th><th>Qué revisar</th></tr><tr><td>No puedo vender</td><td>Abre un turno y confirma que tu rol tenga permiso de venta.</td></tr><tr><td>No aparece un producto</td><td>Revisa categoría, búsqueda y estado Disponible/Agotado.</td></tr><tr><td>No llega una orden a Cola</td><td>Comprueba internet; espera reconexión y verifica que el cobro terminó.</td></tr><tr><td>No imprime</td><td>Bluetooth, emparejamiento, permisos, impresora seleccionada y ancho del papel.</td></tr><tr><td>No puedo cancelar</td><td>La cancelación requiere rol supervisor o administrador.</td></tr><tr><td>No veo Semana/Mes/Año</td><td>Los periodos extendidos requieren Kahve Pro.</td></tr><tr><td>Diferencia en caja</td><td>Revisa fondo, efectivo, propinas, retiros, depósitos y conteo.</td></tr></table>
+<div class="callout"><b>Soporte:</b> abre Perfil → Contáctanos. Incluye versión de la app, módulo afectado y pasos para reproducir el problema, sin compartir PIN ni datos de clientes.</div>
+<p class="footer-note">Manual generado a partir de la interfaz y comportamiento disponibles en Kahve 2.0. Las opciones visibles dependen del rol, plan, plataforma y configuración de la cafetería.</p>
+</section>
+</body>
+</html>

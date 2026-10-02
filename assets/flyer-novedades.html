@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Novedades Kahve</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Fraunces:opsz,wght@9..144,700;9..144,800&display=swap');
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1080px; height: 1350px; overflow: hidden; }
+    body { font-family: 'DM Sans', sans-serif; background: #f8eee9; color: #37170e; }
+
+    .flyer {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      padding: 70px 74px 58px;
+      background:
+        linear-gradient(90deg, transparent 0 92%, #ef9477 92% 94%, transparent 94%),
+        #f8eee9;
+      overflow: hidden;
+    }
+
+    .flyer::before {
+      content: '';
+      position: absolute;
+      top: -225px;
+      right: -200px;
+      width: 630px;
+      height: 630px;
+      border: 72px solid #f2b8a5;
+      border-radius: 50%;
+      opacity: .56;
+    }
+
+    .flyer::after {
+      content: '';
+      position: absolute;
+      left: -120px;
+      bottom: -175px;
+      width: 420px;
+      height: 420px;
+      border: 48px solid #add8c9;
+      border-radius: 50%;
+      opacity: .55;
+    }
+
+    header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 128px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 24px; }
+    .logo {
+      width: 122px;
+      height: 122px;
+      border-radius: 24px;
+      box-shadow: 0 14px 32px rgba(79, 31, 15, .18);
+    }
+    .brand-name {
+      font-family: 'Fraunces', serif;
+      font-size: 55px;
+      font-weight: 800;
+      line-height: .95;
+      letter-spacing: 0;
+    }
+    .brand-tagline {
+      margin-top: 9px;
+      color: #8d5141;
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+    .version {
+      padding: 13px 20px;
+      border: 2px solid #5d2414;
+      color: #5d2414;
+      font-size: 17px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 250px;
+      gap: 42px;
+      align-items: end;
+      margin-top: 55px;
+      padding-bottom: 42px;
+      border-bottom: 3px solid #5d2414;
+    }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #c95f43;
+      font-size: 19px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+    h1 {
+      margin: 0;
+      max-width: 680px;
+      font-family: 'Fraunces', serif;
+      font-size: 82px;
+      font-weight: 800;
+      line-height: .98;
+      letter-spacing: 0;
+    }
+    .intro-copy {
+      margin: 0 0 6px;
+      color: #784434;
+      font-size: 22px;
+      line-height: 1.42;
+    }
+
+    .updates {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      column-gap: 54px;
+      row-gap: 0;
+      margin-top: 26px;
+    }
+    .update {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 17px;
+      min-height: 154px;
+      padding: 25px 0 22px;
+      border-bottom: 1px solid rgba(93, 36, 20, .25);
+    }
+    .update:nth-child(5) { grid-column: 1 / -1; max-width: 440px; border-bottom: 0; }
+    .number {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 54px;
+      height: 54px;
+      background: #5d2414;
+      color: #fff5f0;
+      font-family: 'Fraunces', serif;
+      font-size: 21px;
+      font-weight: 700;
+      border-radius: 50%;
+    }
+    .update:nth-child(2) .number,
+    .update:nth-child(5) .number { background: #16705b; }
+    .update h2 {
+      margin: 1px 0 7px;
+      font-size: 23px;
+      line-height: 1.16;
+      letter-spacing: 0;
+    }
+    .update p {
+      margin: 0;
+      color: #784434;
+      font-size: 17px;
+      line-height: 1.38;
+    }
+
+    footer {
+      position: absolute;
+      z-index: 1;
+      right: 74px;
+      bottom: 58px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: #5d2414;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    footer::before { content: ''; width: 82px; height: 3px; background: #ef9477; }
+  </style>
+</head>
+<body>
+  <main class="flyer">
+    <header>
+      <div class="brand">
+        <img class="logo" src="icon.png" alt="Logo de Kahve">
+        <div>
+          <div class="brand-name">Kahve</div>
+          <div class="brand-tagline">Punto de venta para cafeterías</div>
+        </div>
+      </div>
+      <div class="version">Actualización 2.0</div>
+    </header>
+
+    <section class="intro">
+      <div>
+        <p class="eyebrow">Lo nuevo</p>
+        <h1>Más control.<br>Mejores tickets.</h1>
+      </div>
+      <p class="intro-copy">Una experiencia más ágil para tu equipo y más cuidada para tus clientes.</p>
+    </section>
+
+    <section class="updates" aria-label="Novedades de Kahve">
+      <article class="update">
+        <span class="number">01</span>
+        <div>
+          <h2>Tickets con tu identidad</h2>
+          <p>Logo centrado, formato renovado y contenido configurable.</p>
+        </div>
+      </article>
+
+      <article class="update">
+        <span class="number">02</span>
+        <div>
+          <h2>Cortes listos para imprimir</h2>
+          <p>Imprime el resumen de caja al finalizar cada turno.</p>
+        </div>
+      </article>
+
+      <article class="update">
+        <span class="number">03</span>
+        <div>
+          <h2>Promociones más precisas</h2>
+          <p>Descuentos reflejados correctamente en operación y tickets.</p>
+        </div>
+      </article>
+
+      <article class="update">
+        <span class="number">04</span>
+        <div>
+          <h2>Catálogo más fácil de gestionar</h2>
+          <p>Nueva vista de promociones y eliminación directa de productos.</p>
+        </div>
+      </article>
+
+      <article class="update">
+        <span class="number">05</span>
+        <div>
+          <h2>Una app más conectada</h2>
+          <p>Notificaciones, navegación mejorada y una base técnica actualizada.</p>
+        </div>
+      </article>
+    </section>
+
+    <footer>Hecho para el ritmo de tu cafetería</footer>
+  </main>
+</body>
+</html>

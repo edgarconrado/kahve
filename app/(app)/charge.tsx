@@ -23,7 +23,12 @@ function quickAmounts(total: number): number[] {
   return [...new Set(options)].filter((x) => x >= total).slice(0, 4);
 }
 
-export default function Charge() {
+interface ChargeProps {
+  embedded?: boolean;
+  onClose?: () => void;
+}
+
+export default function Charge({ embedded = false, onClose }: ChargeProps) {
   const { width } = useWindowDimensions();
   // En pantallas anchas (tablets, landscape) el formulario se centra con un
   // ancho máximo cómodo de leer, en vez de estirarse de borde a borde.
@@ -355,6 +360,7 @@ export default function Charge() {
     setCustomerPhone('');
     setLoyaltyStatus(null);
     setLoyaltyApplied(false);
+    const finish = () => embedded ? onClose?.() : router.back();
     Alert.alert(
       `Orden #${String(order.order_number).padStart(3, '0')}`,
       'Pago registrado. Enviada a preparación.',
@@ -362,7 +368,7 @@ export default function Charge() {
         {
           text: 'Imprimir',
           onPress: () => {
-            printCurrentTicket(order, ticketLines, ticketInfo).finally(() => router.back());
+            printCurrentTicket(order, ticketLines, ticketInfo).finally(finish);
           },
         },
         {
@@ -370,13 +376,13 @@ export default function Charge() {
           onPress: () => {
             if (tier === 'free') {
               proFeatureAlert('Enviar tickets por WhatsApp o correo');
-              router.back();
+              finish();
               return;
             }
-            shareTicket(order, ticketLines, ticketInfo).finally(() => router.back());
+            shareTicket(order, ticketLines, ticketInfo).finally(finish);
           },
         },
-        { text: 'Listo', style: 'cancel', onPress: () => router.back() },
+        { text: 'Listo', style: 'cancel', onPress: finish },
       ],
     );
   };
@@ -404,6 +410,35 @@ export default function Charge() {
             `IVA incluido $${tax.toFixed(2)}`,
           ].filter(Boolean).join(' · ')}
         </Text>
+      </View>
+
+      <View style={styles.saleSummary}>
+        <View style={styles.saleSummaryHeader}>
+          <Text style={styles.saleSummaryTitle}>Detalle de la venta</Text>
+          <Text style={styles.saleSummaryCount}>
+            {cart.lines.reduce((count, line) => count + line.quantity, 0)} artículos
+          </Text>
+        </View>
+        {cart.lines.map((line) => {
+          const unit = lineUnitPrice(line);
+          return (
+            <View key={line.lineId} style={styles.saleLine}>
+              <View style={styles.saleLineInfo}>
+                <Text style={styles.saleLineName} numberOfLines={1}>
+                  {line.quantity}× {line.product.name}
+                </Text>
+                {line.modifiers.length > 0 && (
+                  <Text style={styles.saleLineModifiers} numberOfLines={1}>
+                    {line.modifiers.map((modifier) => modifier.name).join(' · ')}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.saleLineTotal}>
+                ${(unit * line.quantity).toFixed(2)}
+              </Text>
+            </View>
+          );
+        })}
       </View>
 
       {appliedPromotions.length > 0 && (
@@ -724,6 +759,20 @@ const styles = StyleSheet.create({
   totalLabel: { color: '#F5C4B3', fontSize: 12 },
   totalValue: { color: '#FAECE7', fontSize: 32, fontWeight: '600' },
   totalSub: { color: '#F0997B', fontSize: 11, marginTop: 2 },
+  saleSummary: {
+    borderWidth: 1, borderColor: '#eee', borderRadius: 12,
+    padding: 12, gap: 8, backgroundColor: '#fff',
+  },
+  saleSummaryHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  },
+  saleSummaryTitle: { fontSize: 13, fontWeight: '700', color: '#333' },
+  saleSummaryCount: { fontSize: 11, color: '#888' },
+  saleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  saleLineInfo: { flex: 1 },
+  saleLineName: { fontSize: 13, color: '#333' },
+  saleLineModifiers: { fontSize: 11, color: '#888', marginTop: 2 },
+  saleLineTotal: { fontSize: 13, fontWeight: '600', color: '#333' },
   promoBox: {
     backgroundColor: '#E1F5EE', borderRadius: 10, padding: 10, gap: 4,
   },

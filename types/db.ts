@@ -5,7 +5,7 @@ export type OrderStatus =
   | 'lista' | 'entregada' | 'cancelada';
 
 export type OrderType = 'local' | 'llevar';
-export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
+export type PaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia' | 'plataforma';
 export type CardType = 'debito' | 'credito';
 export type ShiftStatus = 'abierto' | 'cerrado';
 

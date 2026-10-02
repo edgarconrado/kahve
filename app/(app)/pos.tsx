@@ -10,6 +10,7 @@ import { useOpenShift } from '../../lib/shift';
 import { useCart, cartTotals } from '../../store/cart';
 import ProductModal from '../../components/ProductModal';
 import TicketSheet from '../../components/TicketSheet';
+import Charge from './charge';
 import type { Modifier, Product } from '../../types/db';
 
 type ProductWithModifiers = Product & { modifiers: Modifier[] };
@@ -36,6 +37,7 @@ export default function Pos() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<ProductWithModifiers | null>(null);
   const [showTicket, setShowTicket] = useState(false);
+  const [showCharge, setShowCharge] = useState(false);
 
   // Recarga al recuperar foco: así el POS refleja de inmediato los
   // cambios hechos en Menú (agotados, precios, productos nuevos)
@@ -242,11 +244,24 @@ export default function Pos() {
         onClose={() => setShowTicket(false)}
         onCheckout={() => {
           setShowTicket(false);
-          router.push('/(app)/charge');
+          if (width >= 700) setShowCharge(true);
+          else router.push('/(app)/charge');
         }}
       />
 
-      {itemCount > 0 && (
+      {showCharge && width >= 700 && (
+        <View style={[styles.chargePanel, { width: Math.min(430, width * 0.46) }]}>
+          <View style={styles.chargePanelHeader}>
+            <Text style={styles.chargePanelTitle}>Cobrar</Text>
+            <Pressable onPress={() => setShowCharge(false)} hitSlop={10}>
+              <Ionicons name="close" size={22} color="#4A1B0C" />
+            </Pressable>
+          </View>
+          <Charge embedded onClose={() => setShowCharge(false)} />
+        </View>
+      )}
+
+      {itemCount > 0 && !showCharge && (
         <View style={styles.ticketBar}>
           <Pressable
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
@@ -265,7 +280,10 @@ export default function Pos() {
             </Pressable>
             <Pressable
               style={styles.chargeButton}
-              onPress={() => router.push('/(app)/charge')}
+              onPress={() => {
+                if (width >= 700) setShowCharge(true);
+                else router.push('/(app)/charge');
+              }}
             >
               <Text style={styles.chargeText}>Cobrar</Text>
               <Ionicons name="arrow-forward" size={16} color="#4A1B0C" />
@@ -279,6 +297,18 @@ export default function Pos() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  chargePanel: {
+    position: 'absolute', top: 0, right: 0, bottom: 0,
+    backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e5e5e5',
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12,
+    shadowOffset: { width: -3, height: 0 }, elevation: 8,
+  },
+  chargePanelHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  chargePanelTitle: { fontSize: 17, fontWeight: '700', color: '#222' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, padding: 24 },
   noShiftTitle: { fontSize: 17, fontWeight: '600' },
   noShiftText: { fontSize: 13, color: '#666', textAlign: 'center' },

@@ -30,6 +30,11 @@ const SECTIONS: {
     subtitle: '2x1 y descuentos automáticos por cantidad',
     icon: 'pricetags-outline',
   },
+  {
+    route: '/(app)/printer', title: 'Impresora',
+    subtitle: 'Configurar impresora térmica y ancho de papel',
+    icon: 'print-outline',
+  },
 ];
 
 export default function AdminHub() {

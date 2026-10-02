@@ -349,12 +349,6 @@ export default function Profile() {
             <Ionicons name="chevron-forward" size={16} color="#bbb" />
           </Pressable>
         )}
-        <Pressable style={styles.actionRow}
-          onPress={() => router.push('/(app)/printer')}>
-          <Ionicons name="print-outline" size={18} color="#666" />
-          <Text style={styles.actionText}>Impresora</Text>
-          <Ionicons name="chevron-forward" size={16} color="#bbb" />
-        </Pressable>
         <Pressable style={styles.actionRow} onPress={() => setShowPin(true)}>
           <Ionicons name="lock-closed-outline" size={18} color="#666" />
           <Text style={styles.actionText}>Cambiar PIN</Text>

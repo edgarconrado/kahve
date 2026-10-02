@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions,
+  Alert, FlatList, KeyboardAvoidingView, Modal, Platform, Pressable,
+  StyleSheet, Text, TextInput, View, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
@@ -238,29 +239,36 @@ export default function Categories() {
 
       <Modal visible={showForm} transparent animationType="slide"
         onRequestClose={() => setShowForm(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setShowForm(false)} />
-        <View style={styles.sheet}>
-          <Text style={styles.sheetTitle}>
-            {editing ? 'Editar categoría' : 'Nueva categoría'}
-          </Text>
-          <TextInput
-            placeholderTextColor="#9A9A9A"
-            style={styles.input}
-            placeholder="Nombre de la categoría"
-            value={name}
-            onChangeText={setName}
-            autoFocus
-          />
-          <Pressable
-            style={[styles.saveButton, (!name.trim() || busy) && { opacity: 0.5 }]}
-            disabled={!name.trim() || busy}
-            onPress={save}
-          >
-            <Text style={styles.saveText}>
-              {busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear categoría'}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <Pressable style={styles.backdrop} onPress={() => setShowForm(false)} />
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>
+              {editing ? 'Editar categoría' : 'Nueva categoría'}
             </Text>
-          </Pressable>
-        </View>
+            <TextInput
+              placeholderTextColor="#9A9A9A"
+              style={styles.input}
+              placeholder="Nombre de la categoría"
+              value={name}
+              onChangeText={setName}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={save}
+            />
+            <Pressable
+              style={[styles.saveButton, (!name.trim() || busy) && { opacity: 0.5 }]}
+              disabled={!name.trim() || busy}
+              onPress={save}
+            >
+              <Text style={styles.saveText}>
+                {busy ? 'Guardando…' : editing ? 'Guardar cambios' : 'Crear categoría'}
+              </Text>
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={showReassign} transparent animationType="slide"
@@ -325,6 +333,7 @@ const styles = StyleSheet.create({
     borderRadius: 28, backgroundColor: '#4A1B0C',
     alignItems: 'center', justifyContent: 'center', elevation: 4,
   },
+  modalContainer: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: {
     backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,

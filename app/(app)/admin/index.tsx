@@ -31,6 +31,11 @@ const SECTIONS: {
     icon: 'pricetags-outline',
   },
   {
+    route: '/(app)/admin/loyalty', title: 'Clientes frecuentes',
+    subtitle: 'Visitas, recompensas y productos de regalo',
+    icon: 'gift-outline',
+  },
+  {
     route: '/(app)/admin/taxes', title: 'Impuestos',
     subtitle: 'Configurar el IVA incluido en las ventas',
     icon: 'receipt-outline',

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet,
+  Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet,
   Text, TextInput, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,7 +57,7 @@ export default function Taxes() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.screen}
     >
       <View style={styles.header}>
@@ -68,7 +68,11 @@ export default function Taxes() {
         <View style={{ width: 22 }} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={styles.iconCircle}>
           <Ionicons name="receipt-outline" size={28} color="#4A1B0C" />
         </View>
@@ -88,6 +92,8 @@ export default function Taxes() {
             placeholder="16"
             placeholderTextColor="#9A9A9A"
             maxLength={6}
+            returnKeyType="done"
+            onSubmitEditing={save}
           />
           <Text style={styles.percent}>%</Text>
         </View>
@@ -105,7 +111,7 @@ export default function Taxes() {
         >
           <Text style={styles.saveText}>{saving ? 'Guardando…' : 'Guardar IVA'}</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }

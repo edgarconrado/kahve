@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  FlatList, Image, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions,
+  Animated, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -38,6 +39,29 @@ export default function Pos() {
   const [selected, setSelected] = useState<ProductWithModifiers | null>(null);
   const [showTicket, setShowTicket] = useState(false);
   const [showCharge, setShowCharge] = useState(false);
+  const chargeAnimation = useRef(new Animated.Value(0)).current;
+  const chargePanelWidth = Math.min(430, width * 0.46);
+
+  useEffect(() => {
+    if (!showCharge) return;
+    chargeAnimation.setValue(0);
+    Animated.timing(chargeAnimation, {
+      toValue: 1,
+      duration: 260,
+      useNativeDriver: true,
+    }).start();
+  }, [showCharge, chargeAnimation]);
+
+  const openCharge = () => setShowCharge(true);
+  const closeCharge = () => {
+    Animated.timing(chargeAnimation, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setShowCharge(false);
+    });
+  };
 
   // Recarga al recuperar foco: así el POS refleja de inmediato los
   // cambios hechos en Menú (agotados, precios, productos nuevos)
@@ -244,21 +268,38 @@ export default function Pos() {
         onClose={() => setShowTicket(false)}
         onCheckout={() => {
           setShowTicket(false);
-          if (width >= 700) setShowCharge(true);
+          if (width >= 700) openCharge();
           else router.push('/(app)/charge');
         }}
       />
 
       {showCharge && width >= 700 && (
-        <View style={[styles.chargePanel, { width: Math.min(430, width * 0.46) }]}>
-          <View style={styles.chargePanelHeader}>
-            <Text style={styles.chargePanelTitle}>Cobrar</Text>
-            <Pressable onPress={() => setShowCharge(false)} hitSlop={10}>
-              <Ionicons name="close" size={22} color="#4A1B0C" />
-            </Pressable>
-          </View>
-          <Charge embedded onClose={() => setShowCharge(false)} />
-        </View>
+        <>
+          <Animated.View style={[styles.chargeBackdrop, { opacity: chargeAnimation }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeCharge} />
+          </Animated.View>
+          <Animated.View style={[
+            styles.chargePanel,
+            {
+              width: chargePanelWidth,
+              opacity: chargeAnimation,
+              transform: [{
+                translateX: chargeAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [chargePanelWidth, 0],
+                }),
+              }],
+            },
+          ]}>
+            <View style={styles.chargePanelHeader}>
+              <Text style={styles.chargePanelTitle}>Cobrar</Text>
+              <Pressable onPress={closeCharge} hitSlop={10}>
+                <Ionicons name="close" size={22} color="#4A1B0C" />
+              </Pressable>
+            </View>
+            <Charge embedded onClose={closeCharge} />
+          </Animated.View>
+        </>
       )}
 
       {itemCount > 0 && !showCharge && (
@@ -281,7 +322,7 @@ export default function Pos() {
             <Pressable
               style={styles.chargeButton}
               onPress={() => {
-                if (width >= 700) setShowCharge(true);
+                if (width >= 700) openCharge();
                 else router.push('/(app)/charge');
               }}
             >
@@ -297,6 +338,10 @@ export default function Pos() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  chargeBackdrop: {
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+    backgroundColor: 'rgba(30, 14, 8, 0.28)',
+  },
   chargePanel: {
     position: 'absolute', top: 0, right: 0, bottom: 0,
     backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e5e5e5',

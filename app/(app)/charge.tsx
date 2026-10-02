@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
+  Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput,
+  View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
@@ -30,6 +31,7 @@ interface ChargeProps {
 
 export default function Charge({ embedded = false, onClose }: ChargeProps) {
   const { width } = useWindowDimensions();
+  const screenAnimation = useRef(new Animated.Value(embedded ? 1 : 0)).current;
   // En pantallas anchas (tablets, landscape) el formulario se centra con un
   // ancho máximo cómodo de leer, en vez de estirarse de borde a borde.
   const isWide = width >= 700;
@@ -42,6 +44,15 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
   const [received, setReceived] = useState<number | null>(null);
   const [reference, setReference] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (embedded) return;
+    Animated.timing(screenAnimation, {
+      toValue: 1,
+      duration: 240,
+      useNativeDriver: true,
+    }).start();
+  }, [embedded, screenAnimation]);
 
   const [discount, setDiscount] = useState(0);
   const [showDiscount, setShowDiscount] = useState(false);
@@ -403,6 +414,18 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
   };
 
   return (
+    <Animated.View style={[
+      { flex: 1 },
+      !embedded && {
+        opacity: screenAnimation,
+        transform: [{
+          translateY: screenAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [24, 0],
+          }),
+        }],
+      },
+    ]}>
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1 }}
@@ -762,6 +785,7 @@ export default function Charge({ embedded = false, onClose }: ChargeProps) {
       </Modal>
     </ScrollView>
     </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 

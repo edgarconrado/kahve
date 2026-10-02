@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recupera tu PIN de Kahve</title>
+  </head>
+  <body style="margin:0;background:#f8eee9;color:#37170e;font-family:Arial,Helvetica,sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      Crea un PIN nuevo para volver a entrar a tu cuenta de Kahve.
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f8eee9;">
+      <tr>
+        <td align="center" style="padding:36px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;">
+            <tr>
+              <td style="padding:0 0 18px 4px;color:#4a1b0c;font-size:28px;font-weight:700;letter-spacing:.2px;">
+                <span style="display:inline-block;width:38px;height:38px;margin-right:9px;border-radius:11px;background:#4a1b0c;color:#faece7;font-size:22px;line-height:38px;text-align:center;vertical-align:middle;">K</span>
+                <span style="vertical-align:middle;">Kahve</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:38px 34px 42px;background:#ffffff;border-radius:18px;box-shadow:0 8px 24px rgba(74,27,12,.08);">
+                <p style="margin:0 0 10px;color:#b27358;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Acceso a tu cuenta</p>
+                <h1 style="margin:0;color:#37170e;font-size:29px;line-height:1.2;font-weight:700;">Crea un PIN nuevo</h1>
+                <p style="margin:18px 0 0;color:#655850;font-size:16px;line-height:1.6;">
+                  Recibimos una solicitud para cambiar el PIN de <strong style="color:#37170e;">{{ .Email }}</strong>.
+                  Usa el botón para continuar de forma segura.
+                </p>
+                <p style="margin:14px 0 0;padding:12px 14px;border-radius:10px;background:#fff5e6;color:#76512f;font-size:13px;line-height:1.5;">
+                  ¿No encuentras el correo? Revisa también tu carpeta de spam o correo no deseado.
+                </p>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 26px;">
+                  <tr>
+                    <td style="border-radius:10px;background:#4a1b0c;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 24px;color:#faece7;font-size:15px;font-weight:700;text-decoration:none;">Cambiar mi PIN</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0;color:#8a7971;font-size:13px;line-height:1.6;">
+                  Si no solicitaste este cambio, puedes ignorar este correo. El enlace caduca por seguridad.
+                </p>
+                <div style="height:1px;margin:28px 0 20px;background:#efe4dd;"></div>
+                <p style="margin:0;color:#a08f87;font-size:12px;line-height:1.5;">
+                  Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                  <a href="{{ .ConfirmationURL }}" style="color:#b27358;word-break:break-all;">{{ .ConfirmationURL }}</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:22px 20px;color:#9a8177;font-size:12px;line-height:1.5;">
+                Kahve · Punto de venta para cafeterías<br>
+                Este mensaje fue enviado automáticamente; no respondas a este correo.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

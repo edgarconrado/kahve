@@ -18,6 +18,18 @@ Roles: admin, supervisor, cajero, barista.
    "scheme": "kahve",
    "main": "expo-router/entry" (en package.json)
 
+  En Supabase Dashboard → Authentication → URL Configuration agrega
+  `kahve://reset-pin` a Additional Redirect URLs para habilitar la
+  recuperación de PIN por correo.
+
+  ### Plantilla del correo de recuperación
+
+  La plantilla con el diseño visual de Kahve está en
+  `supabase/email-templates/recovery.html`. Para activarla, copia su contenido
+  en Supabase Dashboard → Authentication → Email Templates → Reset Password y
+  guarda los cambios. La plantilla usa las variables oficiales `{{ .Email }}` y
+  `{{ .ConfirmationURL }}`.
+
 3. Corre `kahve_schema.sql` en el SQL Editor de tu proyecto Supabase.
 
 4. Copia `.env.example` a `.env` y llena tus llaves.

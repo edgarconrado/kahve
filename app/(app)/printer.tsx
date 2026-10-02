@@ -11,6 +11,7 @@ import {
   type ReceiptPreferences,
   type PairedPrinter,
 } from '../../lib/printer';
+import HeaderLogo from '../../components/HeaderLogo';
 
 const DEFAULT_RECEIPT_PREFERENCES: ReceiptPreferences = {
   includeLogo: true,
@@ -145,11 +146,11 @@ export default function PrinterSettings() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        <Pressable style={{ width: 30 }} onPress={() => router.back()} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
         </Pressable>
         <Text style={styles.headerTitle}>Impresora</Text>
-        <View style={{ width: 22 }} />
+        <HeaderLogo />
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -259,9 +260,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
   },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#FAECE7' },
   content: { padding: 20, gap: 16, paddingBottom: 36 },
   hint: { fontSize: 13, color: '#888', lineHeight: 19 },
   currentCard: {

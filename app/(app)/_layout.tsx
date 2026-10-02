@@ -3,6 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ColorValue } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { can } from '../../lib/permissions';
+import HeaderLogo from '../../components/HeaderLogo';
+import HeaderUser from '../../components/HeaderUser';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -24,6 +26,15 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
+        headerStyle: { backgroundColor: '#4A1B0C' },
+        headerTintColor: '#FAECE7',
+        headerTitleStyle: { fontWeight: '700' },
+        headerTitleAlign: 'center',
+        headerShadowVisible: false,
+        headerLeft: () => <HeaderUser />,
+        headerLeftContainerStyle: { paddingLeft: 16 },
+        headerRight: () => <HeaderLogo />,
+        headerRightContainerStyle: { paddingRight: 16 },
         tabBarActiveTintColor: '#4A1B0C',
         tabBarInactiveTintColor: '#9a9a9a',
       }}
@@ -63,6 +74,7 @@ export default function AppLayout() {
         options={{
           title: 'Admin',
           href: can(role, 'menu.edit') ? '/(app)/admin' : null,
+          headerShown: false,
           tabBarIcon: icon('settings', 'settings-outline'),
         }}
       />

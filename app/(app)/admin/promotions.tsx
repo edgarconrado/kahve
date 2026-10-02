@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
 import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
+import HeaderLogo from '../../../components/HeaderLogo';
 
 type Scope = 'product' | 'category' | 'combo';
 type Kind = 'twoForOne' | 'secondDiscount' | 'combo';
@@ -265,11 +266,12 @@ export default function Promotions() {
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
-            <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+            <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
           </Pressable>
-          <Ionicons name="pricetags-outline" size={20} color="#4A1B0C" />
+          <Ionicons name="pricetags-outline" size={20} color="#F5C4B3" />
           <Text style={styles.title}>Promociones</Text>
         </View>
+        <HeaderLogo />
       </View>
 
       {tier === 'free' ? (
@@ -571,8 +573,12 @@ export default function Promotions() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14 },
-  title: { fontSize: 24, fontWeight: '700', color: '#222' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
+    backgroundColor: '#4A1B0C',
+  },
+  title: { fontSize: 24, fontWeight: '700', color: '#FAECE7' },
   empty: { textAlign: 'center', color: '#999', fontSize: 13, marginTop: 40 },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

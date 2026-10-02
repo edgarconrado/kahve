@@ -13,6 +13,7 @@ import { useAuth } from '../../../lib/auth';
 import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
 import type { Modifier, Product } from '../../../types/db';
 import RecipeEditor from '../../../components/RecipeEditor';
+import HeaderLogo from '../../../components/HeaderLogo';
 
 interface Category { id: string; name: string }
 type ProductFull = Product & { modifiers: Modifier[] };
@@ -344,11 +345,11 @@ export default function Menu() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.screenHeader}>
-        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        <Pressable style={{ width: 30 }} onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
         </Pressable>
         <Text style={styles.screenHeaderTitle}>Menú</Text>
-        <View style={{ width: 22 }} />
+        <HeaderLogo />
       </View>
       <FlatList
         data={visibleProducts}
@@ -632,9 +633,9 @@ const styles = StyleSheet.create({
   screenHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
   },
-  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
+  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#FAECE7' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,

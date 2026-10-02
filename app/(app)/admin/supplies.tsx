@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
 import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
+import HeaderLogo from '../../../components/HeaderLogo';
 
 interface Supply {
   id: string;
@@ -202,18 +203,21 @@ export default function Supplies() {
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
-            <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+            <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
           </Pressable>
           <Text style={styles.title}>Insumos</Text>
         </View>
-        {lowStockCount > 0 && (
-          <View style={styles.alertPill}>
-            <Ionicons name="warning-outline" size={13} color="#854F0B" />
-            <Text style={styles.alertPillText}>
-              {lowStockCount} con stock bajo
-            </Text>
-          </View>
-        )}
+        <View style={styles.headerRight}>
+          {lowStockCount > 0 && (
+            <View style={styles.alertPill}>
+              <Ionicons name="warning-outline" size={13} color="#854F0B" />
+              <Text style={styles.alertPillText}>
+                {lowStockCount} con stock bajo
+              </Text>
+            </View>
+          )}
+          <HeaderLogo />
+        </View>
       </View>
 
       {tier === 'free' ? (
@@ -438,8 +442,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
+    backgroundColor: '#4A1B0C',
   },
-  title: { fontSize: 24, fontWeight: '700', color: '#222' },
+  title: { fontSize: 24, fontWeight: '700', color: '#FAECE7' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   alertPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: '#FAEEDA', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10,

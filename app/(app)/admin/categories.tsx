@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { useAuth } from '../../../lib/auth';
+import HeaderLogo from '../../../components/HeaderLogo';
 
 interface Category {
   id: string;
@@ -175,11 +176,11 @@ export default function Categories() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.screenHeader}>
-        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        <Pressable style={{ width: 30 }} onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
         </Pressable>
         <Text style={styles.screenHeaderTitle}>Categorías</Text>
-        <View style={{ width: 22 }} />
+        <HeaderLogo />
       </View>
       <FlatList
         data={categories}
@@ -316,9 +317,9 @@ const styles = StyleSheet.create({
   screenHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
   },
-  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
+  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#FAECE7' },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderWidth: 1, borderColor: '#eee', borderRadius: 14, padding: 14,

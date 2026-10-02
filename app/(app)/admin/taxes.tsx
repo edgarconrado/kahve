@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../lib/auth';
 import { supabase } from '../../../lib/supabase';
+import HeaderLogo from '../../../components/HeaderLogo';
 
 export default function Taxes() {
   const { employee } = useAuth();
@@ -61,11 +62,11 @@ export default function Taxes() {
       style={styles.screen}
     >
       <View style={styles.header}>
-        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        <Pressable style={{ width: 30 }} onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
         </Pressable>
         <Text style={styles.headerTitle}>Impuestos</Text>
-        <View style={{ width: 22 }} />
+        <HeaderLogo />
       </View>
 
       <ScrollView
@@ -121,9 +122,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
   },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#FAECE7' },
   content: { padding: 20, maxWidth: 560, width: '100%', alignSelf: 'center' },
   iconCircle: {
     width: 56, height: 56, borderRadius: 12, backgroundColor: '#FAECE7',

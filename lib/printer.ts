@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 const KEY_MAC = 'kahve:printer:mac';
 const KEY_NAME = 'kahve:printer:name';
 const KEY_WIDTH = 'kahve:printer:widthMM'; // '58' | '80'
+const KEY_SELECTION = 'kahve:printer:selection';
 const KEY_RECEIPT_PREFERENCES = 'kahve:printer:receiptPreferences';
 
 export interface ReceiptPreferences {
@@ -64,6 +65,26 @@ export async function getPairedPrinters(): Promise<PairedPrinter[]> {
 export async function getSelectedPrinter(): Promise<
   { name: string; macAddress: string; widthMM: '58' | '80' } | null
 > {
+  const savedSelection = await AsyncStorage.getItem(KEY_SELECTION);
+  if (savedSelection) {
+    try {
+      const selection = JSON.parse(savedSelection) as {
+        name?: string;
+        macAddress?: string;
+        widthMM?: '58' | '80';
+      };
+      if (selection.macAddress) {
+        return {
+          macAddress: selection.macAddress,
+          name: selection.name ?? 'Impresora',
+          widthMM: selection.widthMM === '80' ? '80' : '58',
+        };
+      }
+    } catch {
+      // Recupera las claves antiguas si el registro consolidado está corrupto.
+    }
+  }
+
   const [mac, name, width] = await Promise.all([
     AsyncStorage.getItem(KEY_MAC),
     AsyncStorage.getItem(KEY_NAME),
@@ -74,13 +95,17 @@ export async function getSelectedPrinter(): Promise<
 }
 
 export async function selectPrinter(printer: PairedPrinter, widthMM: '58' | '80' = '58') {
-  await AsyncStorage.setItem(KEY_MAC, printer.macAddress);
-  await AsyncStorage.setItem(KEY_NAME, printer.name);
-  await AsyncStorage.setItem(KEY_WIDTH, widthMM);
+  const selection = { name: printer.name, macAddress: printer.macAddress, widthMM };
+  await Promise.all([
+    AsyncStorage.setItem(KEY_SELECTION, JSON.stringify(selection)),
+    AsyncStorage.setItem(KEY_MAC, printer.macAddress),
+    AsyncStorage.setItem(KEY_NAME, printer.name),
+    AsyncStorage.setItem(KEY_WIDTH, widthMM),
+  ]);
 }
 
 export async function forgetPrinter() {
-  await AsyncStorage.multiRemove([KEY_MAC, KEY_NAME, KEY_WIDTH]);
+  await AsyncStorage.multiRemove([KEY_SELECTION, KEY_MAC, KEY_NAME, KEY_WIDTH]);
 }
 
 export async function getReceiptPreferences(): Promise<ReceiptPreferences> {

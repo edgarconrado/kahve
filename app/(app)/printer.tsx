@@ -180,7 +180,10 @@ export default function PrinterSettings() {
           {(['58', '80'] as const).map((w) => (
             <Pressable key={w}
               style={[styles.widthChip, widthMM === w && styles.widthChipOn]}
-              onPress={() => setWidthMM(w)}>
+              onPress={() => {
+                setWidthMM(w);
+                if (current) selectPrinter(current, w);
+              }}>
               <Text style={[styles.widthChipText, widthMM === w && styles.widthChipTextOn]}>
                 {w} mm
               </Text>

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import * as Application from 'expo-application';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import { router, useFocusEffect } from 'expo-router';
@@ -397,6 +398,9 @@ export default function Profile() {
           <Text style={[styles.actionText, { color: '#A32D2D' }]}>Cerrar sesión</Text>
         </Pressable>
       </View>
+      <Text style={styles.versionText}>
+        Kahve · Versión {Application.nativeApplicationVersion ?? 'desarrollo'}
+      </Text>
 
       {/* Modal: eliminar cuenta */}
       <Modal visible={showDelete} transparent animationType="slide"
@@ -540,6 +544,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#f2f2f2',
   },
   actionText: { flex: 1, fontSize: 14, color: '#222' },
+  versionText: { color: '#9A8A82', fontSize: 11, textAlign: 'center', marginTop: 10 },
   orgCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderWidth: 1, borderColor: '#eee', borderRadius: 14,

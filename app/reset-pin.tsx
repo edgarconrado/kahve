@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import {
   Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet,
@@ -14,8 +14,17 @@ const hasRecoveryPayload = (candidate: string | null) => Boolean(
   candidate && /(?:access_token|refresh_token|code|error_description)=/.test(candidate),
 );
 
+const paramsToRecoveryUrl = (params: Record<string, string | string[] | undefined>) => {
+  const keys = ['code', 'access_token', 'refresh_token', 'error_description', 'error'] as const;
+  const entries = keys
+    .filter((key) => params[key])
+    .map((key) => `${key}=${encodeURIComponent(String(params[key]))}`);
+  return entries.length > 0 ? `kahve://reset-pin?${entries.join('&')}` : null;
+};
+
 export default function ResetPin() {
   const url = Linking.useURL();
+  const routeParams = useLocalSearchParams();
   const [eventUrl, setEventUrl] = useState<string | null>(null);
   const [initialUrl, setInitialUrl] = useState<string | null>(null);
   const handledUrl = useRef<string | null>(null);
@@ -24,7 +33,8 @@ export default function ResetPin() {
   const [confirmPin, setConfirmPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const recoveryUrl = [url, eventUrl, initialUrl].find(hasRecoveryPayload) ?? null;
+  const routeUrl = paramsToRecoveryUrl(routeParams);
+  const recoveryUrl = [url, eventUrl, initialUrl, routeUrl].find(hasRecoveryPayload) ?? null;
 
   useEffect(() => {
     Linking.getInitialURL().then(setInitialUrl);
@@ -70,7 +80,7 @@ export default function ResetPin() {
     };
 
     establishRecoverySession();
-  }, [url, eventUrl, initialUrl]);
+  }, [url, eventUrl, initialUrl, routeUrl]);
 
   useEffect(() => {
     if (recoveryUrl || state !== 'loading') return;

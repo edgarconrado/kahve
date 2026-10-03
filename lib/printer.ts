@@ -104,6 +104,32 @@ export async function selectPrinter(printer: PairedPrinter, widthMM: '58' | '80'
   ]);
 }
 
+async function resolveSelectedPrinter() {
+  const selected = await getSelectedPrinter();
+  if (!selected) return null;
+
+  try {
+    const paired = await getPairedPrinters();
+    const exact = paired.find((device) => (
+      device.macAddress.toLowerCase() === selected.macAddress.toLowerCase()
+    ));
+    if (exact) return { ...selected, ...exact };
+
+    const selectedName = selected.name.trim().toLowerCase();
+    const byName = selectedName
+      ? paired.find((device) => device.name.trim().toLowerCase() === selectedName)
+      : null;
+    if (byName) {
+      await selectPrinter(byName, selected.widthMM);
+      return { ...selected, ...byName };
+    }
+  } catch {
+    // La impresión intentará usar la selección guardada si la consulta no está disponible.
+  }
+
+  return selected;
+}
+
 export async function forgetPrinter() {
   await AsyncStorage.multiRemove([KEY_SELECTION, KEY_MAC, KEY_NAME, KEY_WIDTH]);
 }
@@ -224,7 +250,7 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
       'Esta función requiere un build compilado (no funciona en Expo Go).',
     );
   }
-  const printer = await getSelectedPrinter();
+  const printer = await resolveSelectedPrinter();
   if (!printer) {
     throw new Error('No hay una impresora configurada en este dispositivo.');
   }
@@ -233,12 +259,21 @@ export async function printReceipt(data: ReceiptData): Promise<void> {
     { ...data, preferences: await getReceiptPreferences() },
     charsPerLine,
   );
-  await ThermalPrinterModule.printBluetooth({
-    macAddress: printer.macAddress,
-    payload,
-    printerWidthMM: printer.widthMM === '58' ? 48 : 72,
-    printerNbrCharactersPerLine: charsPerLine,
-  });
+  try {
+    await ThermalPrinterModule.printBluetooth({
+      macAddress: printer.macAddress,
+      payload,
+      printerWidthMM: printer.widthMM === '58' ? 48 : 72,
+      printerNbrCharactersPerLine: charsPerLine,
+    });
+  } catch (error: any) {
+    if (String(error?.message ?? error).toLowerCase().includes('device not found')) {
+      throw new Error(
+        'La impresora guardada ya no está emparejada. Enciéndela y empareja la impresora desde Ajustes de Bluetooth; después pulsa Buscar impresoras emparejadas.',
+      );
+    }
+    throw error;
+  }
 }
 
 // ============================================================

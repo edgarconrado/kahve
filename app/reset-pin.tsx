@@ -10,6 +10,10 @@ import { supabase } from '../lib/supabase';
 
 type RecoveryState = 'loading' | 'ready' | 'invalid' | 'saved';
 
+const hasRecoveryPayload = (candidate: string | null) => Boolean(
+  candidate && /(?:access_token|refresh_token|code|error_description)=/.test(candidate),
+);
+
 export default function ResetPin() {
   const url = Linking.useURL();
   const [eventUrl, setEventUrl] = useState<string | null>(null);
@@ -20,6 +24,7 @@ export default function ResetPin() {
   const [confirmPin, setConfirmPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const recoveryUrl = [url, eventUrl, initialUrl].find(hasRecoveryPayload) ?? null;
 
   useEffect(() => {
     Linking.getInitialURL().then(setInitialUrl);
@@ -30,13 +35,6 @@ export default function ResetPin() {
   }, []);
 
   useEffect(() => {
-    const recoveryUrl = [url, eventUrl, initialUrl].find((candidate) => (
-      candidate?.includes('#')
-      || candidate?.includes('access_token=')
-      || candidate?.includes('refresh_token=')
-      || candidate?.includes('code=')
-      || candidate?.includes('error_description=')
-    )) ?? null;
     if (!recoveryUrl || handledUrl.current === recoveryUrl) return;
     handledUrl.current = recoveryUrl;
 
@@ -72,7 +70,16 @@ export default function ResetPin() {
     };
 
     establishRecoverySession();
-  }, [url, initialUrl]);
+  }, [url, eventUrl, initialUrl]);
+
+  useEffect(() => {
+    if (recoveryUrl || state !== 'loading') return;
+    const timeout = setTimeout(() => {
+      setError('No pudimos leer el enlace. Solicita otro correo e inténtalo de nuevo.');
+      setState('invalid');
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [recoveryUrl, state]);
 
   const cleanPin = (value: string) => value.replace(/\D/g, '').slice(0, 6);
   const validPin = /^\d{6}$/.test(pin) && pin === confirmPin;

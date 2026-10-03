@@ -4,32 +4,36 @@
 <meta charset="utf-8">
 <title>Manual de usuario - Kahve</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,700;9..144,800&display=swap');
+  :root { --coffee: #4a1b0c; --ink: #2e211d; --coral: #d88a6a; --rose: #faece7; --mint: #e4f3ed; --line: #ddcec8; }
   @page { size: A4; margin: 13mm 14mm 15mm; }
   * { box-sizing: border-box; }
-  body { margin: 0; color: #2e211d; font-family: "Segoe UI", sans-serif; font-size: 10.5pt; line-height: 1.42; }
-  h1, h2, h3 { color: #4a1b0c; margin: 0 0 8px; page-break-after: avoid; }
-  h1 { font-size: 29pt; line-height: 1.05; }
-  h2 { font-size: 20pt; border-bottom: 2px solid #e9b39f; padding-bottom: 5px; }
-  h3 { font-size: 13pt; margin-top: 14px; }
+  body { margin: 0; color: var(--ink); font-family: "DM Sans", "Segoe UI", sans-serif; font-size: 10.5pt; line-height: 1.42; }
+  h1, h2, h3 { color: var(--coffee); font-family: "Fraunces", Georgia, serif; margin: 0 0 8px; page-break-after: avoid; }
+  h1 { font-size: 31pt; line-height: 1.05; }
+  h2 { color: #faece7; background: #4a1b0c; border: 0; border-radius: 3mm; font-size: 20pt; padding: 8px 12px 9px; }
+  h3 { color: #b27358; font-size: 13pt; margin-top: 14px; }
   p { margin: 5px 0 9px; }
   ul, ol { margin: 5px 0 10px 20px; padding: 0; }
   li { margin: 3px 0; }
   .page { page-break-before: always; }
   .keep { break-inside: avoid; }
-  .cover { height: 268mm; display: flex; flex-direction: column; justify-content: space-between; background: #faece7; margin: -13mm -14mm -15mm; padding: 24mm 20mm 18mm; position: relative; overflow: hidden; }
+  .cover { height: 268mm; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(145deg, #faece7 0%, #f8eee9 62%, #e4f3ed 100%); margin: -13mm -14mm -15mm; padding: 24mm 20mm 18mm; position: relative; overflow: hidden; }
+  .cover:before { content: ""; position: absolute; width: 92mm; height: 92mm; border: 12mm solid #f2b8a5; border-radius: 50%; right: -40mm; top: -35mm; opacity: .62; }
   .cover:after { content: ""; position: absolute; width: 125mm; height: 125mm; border: 18mm solid #d88a6a; border-radius: 50%; right: -55mm; bottom: -48mm; opacity: .34; }
   .brand { display: flex; align-items: center; gap: 14px; }
-  .brand img { width: 34mm; height: 34mm; border-radius: 8mm; }
-  .brand strong { display: block; font-size: 26pt; color: #4a1b0c; }
-  .brand span { color: #88503d; font-size: 12pt; }
+  .brand img { width: 34mm; height: 34mm; border-radius: 8mm; box-shadow: 0 4mm 9mm rgba(74,27,12,.16); }
+  .brand strong { display: block; color: var(--coffee); font-family: "Fraunces", Georgia, serif; font-size: 29pt; }
+  .brand span { color: #88503d; font-size: 11pt; font-weight: 600; }
   .cover-copy { max-width: 145mm; position: relative; z-index: 1; }
+  .cover-copy:before { content: "GUÍA PRÁCTICA"; display: inline-block; margin-bottom: 8px; color: #c95f43; font-size: 9pt; font-weight: 700; letter-spacing: 1.8px; }
   .cover-copy p { color: #744331; font-size: 14pt; max-width: 125mm; }
-  .meta { color: #744331; font-size: 10pt; position: relative; z-index: 1; }
+  .meta { color: #744331; font-size: 10pt; line-height: 1.55; position: relative; z-index: 1; }
   .toc { columns: 2; column-gap: 16mm; }
   .toc p { margin: 0 0 7px; break-inside: avoid; }
   .toc b { color: #4a1b0c; }
   .callout { background: #faece7; border-left: 4px solid #d88a6a; padding: 9px 11px; margin: 10px 0; break-inside: avoid; }
-  .pro { background: #e4f3ed; border-left-color: #16705b; }
+  .pro { background: var(--mint); border-left-color: #16705b; }
   .warning { background: #fff3d8; border-left-color: #c8891c; }
   table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.5pt; break-inside: avoid; }
   th { background: #4a1b0c; color: white; text-align: left; }
@@ -43,13 +47,13 @@
   .caption { text-align: center; color: #76625b; font-size: 8.5pt; margin-top: -7px; }
   .steps { counter-reset: item; list-style: none; margin-left: 0; }
   .steps li { counter-increment: item; padding-left: 28px; position: relative; margin: 7px 0; }
-  .steps li:before { content: counter(item); position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; background: #4a1b0c; color: white; text-align: center; line-height: 20px; font-weight: 700; font-size: 8pt; }
+  .steps li:before { content: counter(item); position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; background: var(--coffee); color: white; text-align: center; line-height: 20px; font-weight: 700; font-size: 8pt; }
   .footer-note { color: #7f6b64; font-size: 8pt; margin-top: 12px; }
 </style>
 </head>
 <body>
 <section class="cover">
-  <div class="brand"><img src="../icon.png" alt="Logo Kahve"><div><strong>Kahve</strong><span>Punto de venta para cafeterías</span></div></div>
+  <div class="brand"><img src="../splash-icon.png" alt="Logo Kahve"><div><strong>Kahve</strong><span>Punto de venta para cafeterías</span></div></div>
   <div class="cover-copy"><h1>Manual de usuario</h1><p>Guía práctica para administrar el menú, vender, preparar órdenes, cobrar, controlar turnos y consultar resultados.</p></div>
   <div class="meta">Edición 2.0 · Octubre de 2026<br>Android · Roles: barista, cajero, supervisor y administrador</div>
 </section>
@@ -66,6 +70,9 @@
 <ol class="steps"><li>En la pantalla inicial escribe tu correo.</li><li>Introduce tu PIN de 4 a 6 dígitos.</li><li>Pulsa <b>Entrar</b>.</li></ol>
 <p>Para crear una cafetería nueva, usa <b>Registra tu cafetería</b> e introduce nombre de la cafetería, sucursal, nombre del administrador, correo, PIN y confirmación.</p>
 <div class="warning callout"><b>No compartas tu PIN.</b> Si no puedes entrar, solicita al administrador que verifique que tu empleado esté activo y que el correo sea correcto.</div>
+<h3>Recuperar el PIN</h3>
+<ol class="steps"><li>En la pantalla de inicio pulsa <b>¿Olvidaste tu PIN?</b>.</li><li>Escribe el correo asociado a tu cuenta y pulsa <b>Enviar enlace</b>.</li><li>Abre el correo y pulsa <b>Cambiar mi PIN</b>.</li><li>Crea y confirma un PIN nuevo de 6 dígitos.</li></ol>
+<div class="callout"><b>¿No llega el correo?</b> Revisa spam o correo no deseado. El enlace puede abrir la app móvil o la versión web según el dispositivo.</div>
 </section>
 
 <section class="page">
@@ -117,6 +124,9 @@
 <h2 style="margin-top:18px">10. Administración</h2>
 <img class="shot shot-short" src="capturas/04-admin.png" alt="Hub de administración">
 <p class="caption">Accesos a Menú, Categorías, Equipo, Insumos, Promociones e Impresora.</p>
+<h3>Configurar el IVA</h3>
+<ol class="steps"><li>Ve a Admin → <b>Impuestos</b>.</li><li>Escribe un porcentaje entre 0 y 100.</li><li>Pulsa <b>Guardar IVA</b>.</li></ol>
+<p>El IVA se considera incluido en los precios del menú. El total no cambia; Kahve calcula y muestra el desglose en órdenes y tickets. Usa 0% para no calcular ni mostrar IVA.</p>
 </section>
 
 <section class="page">
@@ -173,7 +183,7 @@
 <table><tr><th>Función</th><th>Free</th><th>Pro / Prueba</th></tr><tr><td>Empleados</td><td>Hasta 3 activos</td><td>Ilimitados</td></tr><tr><td>Reportes</td><td>Hoy</td><td>Semana, mes, año y exportación</td></tr><tr><td>Fotos y recetas</td><td>No</td><td>Sí</td></tr><tr><td>Insumos y mermas</td><td>No</td><td>Sí</td></tr><tr><td>Promociones y lealtad</td><td>No</td><td>Sí</td></tr><tr><td>Tablero y envío de tickets</td><td>No</td><td>Sí</td></tr></table>
 <p>El administrador puede consultar el plan desde Perfil → Kahve Pro. Las opciones de contratación pueden variar según plataforma y tipo de compilación.</p>
 <h2 style="margin-top:18px">20. Solución de problemas</h2>
-<table><tr><th>Problema</th><th>Qué revisar</th></tr><tr><td>No puedo vender</td><td>Abre un turno y confirma que tu rol tenga permiso de venta.</td></tr><tr><td>No aparece un producto</td><td>Revisa categoría, búsqueda y estado Disponible/Agotado.</td></tr><tr><td>No llega una orden a Cola</td><td>Comprueba internet; espera reconexión y verifica que el cobro terminó.</td></tr><tr><td>No imprime</td><td>Bluetooth, emparejamiento, permisos, impresora seleccionada y ancho del papel.</td></tr><tr><td>No puedo cancelar</td><td>La cancelación requiere rol supervisor o administrador.</td></tr><tr><td>No veo Semana/Mes/Año</td><td>Los periodos extendidos requieren Kahve Pro.</td></tr><tr><td>Diferencia en caja</td><td>Revisa fondo, efectivo, propinas, retiros, depósitos y conteo.</td></tr></table>
+<table><tr><th>Problema</th><th>Qué revisar</th></tr><tr><td>No puedo vender</td><td>Abre un turno y confirma que tu rol tenga permiso de venta.</td></tr><tr><td>No aparece un producto</td><td>Revisa categoría, búsqueda y estado Disponible/Agotado.</td></tr><tr><td>No llega una orden a Cola</td><td>Comprueba internet; espera reconexión y verifica que el cobro terminó.</td></tr><tr><td>No imprime</td><td>Bluetooth, emparejamiento, permisos, impresora seleccionada y ancho del papel.</td></tr><tr><td>No puedo cancelar</td><td>La cancelación requiere rol supervisor o administrador.</td></tr><tr><td>No veo Semana/Mes/Año</td><td>Los periodos extendidos requieren Kahve Pro.</td></tr><tr><td>No llega el correo de recuperación</td><td>Revisa spam, confirma el correo de la cuenta y solicita un enlace nuevo.</td></tr><tr><td>El enlace queda validando</td><td>Instala la build más reciente de Kahve, agrega <b>kahve://reset-pin</b> en Supabase y solicita un enlace nuevo.</td></tr><tr><td>Diferencia en caja</td><td>Revisa fondo, efectivo, propinas, retiros, depósitos y conteo.</td></tr></table>
 <div class="callout"><b>Soporte:</b> abre Perfil → Contáctanos. Incluye versión de la app, módulo afectado y pasos para reproducir el problema, sin compartir PIN ni datos de clientes.</div>
 <p class="footer-note">Manual generado a partir de la interfaz y comportamiento disponibles en Kahve 2.0. Las opciones visibles dependen del rol, plan, plataforma y configuración de la cafetería.</p>
 </section>

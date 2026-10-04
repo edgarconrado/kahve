@@ -2,16 +2,11 @@
   "expo": {
     "name": "Kahve",
     "slug": "kahve",
-    "version": "1.1.3",
+    "version": "2.0.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "kahve",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#4A1B0C"
-    },
     "android": {
       "package": "com.jacarandalab.kahve",
       "adaptiveIcon": {
@@ -48,7 +43,20 @@
           "icon": "./assets/icon.png",
           "color": "#4A1B0C"
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#4A1B0C"
+        }
+      ],
+      "expo-asset",
+      "expo-audio",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-splash-screen"
     ],
     "extra": {
       "eas": {

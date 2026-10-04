@@ -13,9 +13,17 @@ import { useAuth } from '../../../lib/auth';
 import { usePlan, proFeatureAlert, HIDE_PRO_UI } from '../../../lib/plan';
 import type { Modifier, Product } from '../../../types/db';
 import RecipeEditor from '../../../components/RecipeEditor';
+import HeaderLogo from '../../../components/HeaderLogo';
 
 interface Category { id: string; name: string }
 type ProductFull = Product & { modifiers: Modifier[] };
+
+// Redondea a 4 decimales y quita ceros sobrantes (evita cosas como
+// "500.00000001" al convertir entre unidad de stock y de receta).
+const formatQty = (n: number) => {
+  const rounded = Math.round(n * 10000) / 10000;
+  return String(rounded);
+};
 
 export default function Menu() {
   const { employee } = useAuth();
@@ -40,7 +48,9 @@ export default function Menu() {
   const [modifiers, setModifiers] = useState<
     { id?: string; name: string; price: string; supplyId: string | null; supplyQty: string }[]
   >([]);
-  const [supplies, setSupplies] = useState<{ id: string; name: string; unit: string }[]>([]);
+  const [supplies, setSupplies] = useState<
+    { id: string; name: string; unit: string; recipe_unit: string | null; recipe_unit_factor: number }[]
+  >([]);
   const [pickerForIndex, setPickerForIndex] = useState<number | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);      // preview local
   const [imageBase64, setImageBase64] = useState<string | null>(null); // pendiente de subir
@@ -65,7 +75,7 @@ export default function Menu() {
       .then(({ data }) => setCategories(data ?? []));
     supabase
       .from('supplies')
-      .select('id, name, unit')
+      .select('id, name, unit, recipe_unit, recipe_unit_factor')
       .eq('is_active', true)
       .order('name')
       .then(({ data }) => setSupplies(data ?? []));
@@ -104,13 +114,21 @@ export default function Menu() {
       });
     }
 
-    setModifiers(activeModifiers.map((m) => ({
-      id: m.id,
-      name: m.name,
-      price: String(m.price_delta),
-      supplyId: supplyByModifier[m.id]?.supply_id ?? null,
-      supplyQty: supplyByModifier[m.id] ? String(supplyByModifier[m.id].quantity_used) : '',
-    })));
+    setModifiers(activeModifiers.map((m) => {
+      const supplyId = supplyByModifier[m.id]?.supply_id ?? null;
+      const stockQty = supplyByModifier[m.id]?.quantity_used;
+      const supply = supplyId ? supplies.find((s) => s.id === supplyId) : null;
+      const factor = supply?.recipe_unit ? (supply.recipe_unit_factor || 1) : 1;
+      return {
+        id: m.id,
+        name: m.name,
+        price: String(m.price_delta),
+        supplyId,
+        // quantity_used en BD siempre está en unidad de stock; aquí se
+        // muestra en la unidad de receta del insumo (si tiene una).
+        supplyQty: stockQty != null ? formatQty(stockQty * factor) : '',
+      };
+    }));
     setImageUri(p.image_url); setImageBase64(null);
     setRecipeLines([]); // RecipeEditor carga la receta existente solo, vía productId
     setShowForm(true);
@@ -264,10 +282,14 @@ export default function Menu() {
 
         // Insumo adicional del modificador (opcional)
         if (modifierId) {
-          const qty = parseFloat(m.supplyQty);
-          if (m.supplyId && qty > 0) {
+          const displayQty = parseFloat(m.supplyQty);
+          if (m.supplyId && displayQty > 0) {
+            const supply = supplies.find((s) => s.id === m.supplyId);
+            const factor = supply?.recipe_unit ? (supply.recipe_unit_factor || 1) : 1;
+            // m.supplyQty está en la unidad de receta del insumo; se
+            // guarda en la unidad de stock, como espera la base de datos.
             await supabase.from('modifier_supplies').upsert({
-              modifier_id: modifierId, supply_id: m.supplyId, quantity_used: qty,
+              modifier_id: modifierId, supply_id: m.supplyId, quantity_used: displayQty / factor,
             });
           } else {
             await supabase.from('modifier_supplies')
@@ -323,11 +345,11 @@ export default function Menu() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.screenHeader}>
-        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        <Pressable style={{ width: 30 }} onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
         </Pressable>
         <Text style={styles.screenHeaderTitle}>Menú</Text>
-        <View style={{ width: 22 }} />
+        <HeaderLogo />
       </View>
       <FlatList
         data={visibleProducts}
@@ -530,7 +552,10 @@ export default function Menu() {
                           ? { ...x, supplyQty: v.replace(/[^0-9.]/g, '') } : x)))}
                     />
                     <Text style={styles.modSupplyUnit}>
-                      {supplies.find((s) => s.id === m.supplyId)?.unit ?? ''}
+                      {(() => {
+                        const s = supplies.find((sp) => sp.id === m.supplyId);
+                        return s?.recipe_unit || s?.unit || '';
+                      })()}
                     </Text>
                     <Pressable hitSlop={8}
                       onPress={() => setModifiers((ms) =>
@@ -568,7 +593,7 @@ export default function Menu() {
                           setPickerForIndex(null);
                         }}>
                         <Text style={styles.pickerName}>{s.name}</Text>
-                        <Text style={styles.pickerUnit}>{s.unit}</Text>
+                        <Text style={styles.pickerUnit}>{s.recipe_unit || s.unit}</Text>
                       </Pressable>
                     ))
                   )}
@@ -608,9 +633,9 @@ const styles = StyleSheet.create({
   screenHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
   },
-  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
+  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#FAECE7' },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderWidth: 1, borderColor: '#ddd', borderRadius: 10,

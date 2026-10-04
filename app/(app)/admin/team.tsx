@@ -10,6 +10,7 @@ import { useAuth } from '../../../lib/auth';
 import { can, type Permission } from '../../../lib/permissions';
 import { usePlan, proFeatureAlert, FREE_MAX_EMPLOYEES } from '../../../lib/plan';
 import type { Employee, EmployeeRole } from '../../../types/db';
+import HeaderLogo from '../../../components/HeaderLogo';
 
 interface Branch { id: string; name: string }
 
@@ -151,11 +152,11 @@ export default function Team() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.screenHeader}>
-        <Pressable onPress={() => router.push('/(app)/admin')} hitSlop={12}>
-          <Ionicons name="arrow-back" size={22} color="#4A1B0C" />
+        <Pressable style={{ width: 30 }} onPress={() => router.push('/(app)/admin')} hitSlop={12}>
+          <Ionicons name="arrow-back" size={22} color="#F5C4B3" />
         </Pressable>
         <Text style={styles.screenHeaderTitle}>Equipo</Text>
-        <View style={{ width: 22 }} />
+        <HeaderLogo />
       </View>
       <ScrollView
         contentContainerStyle={[
@@ -339,9 +340,9 @@ const styles = StyleSheet.create({
   screenHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+    backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
   },
-  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#222' },
+  screenHeaderTitle: { fontSize: 16, fontWeight: '700', color: '#FAECE7' },
   sectionTitle: { fontSize: 12, color: '#888' },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

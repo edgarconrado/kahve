@@ -28,6 +28,8 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
           <Stack.Screen name="register" />
+          <Stack.Screen name="forgot-pin" />
+          <Stack.Screen name="reset-pin" />
           <Stack.Screen name="(app)" />
         </Stack>
         <OfflineBanner />

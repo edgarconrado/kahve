@@ -87,6 +87,14 @@ export default function Login() {
               />
             </View>
 
+            <Pressable
+              onPress={() => router.push('/forgot-pin')}
+              hitSlop={10}
+              style={styles.forgotButton}
+            >
+              <Text style={styles.forgotLink}>¿Olvidaste tu PIN?</Text>
+            </Pressable>
+
             {error && (
               <View style={styles.errorBox}>
                 <Ionicons name="alert-circle-outline" size={15} color="#A32D2D" />
@@ -110,7 +118,7 @@ export default function Login() {
             </Pressable>
           </View>
 
-          <Text style={styles.version}>Kahve · v1.1.3</Text>
+          <Text style={styles.version}>Kahve · v2.0.0</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -155,6 +163,8 @@ const styles = StyleSheet.create({
     paddingVertical: 9, paddingHorizontal: 12, marginBottom: 4, marginTop: 2,
   },
   error: { color: '#A32D2D', fontSize: 12.5, flex: 1 },
+  forgotButton: { alignSelf: 'flex-end', marginTop: -2, marginBottom: 4 },
+  forgotLink: { color: '#4A1B0C', fontSize: 12.5, fontWeight: '600' },
   button: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: '#4A1B0C', borderRadius: 12,

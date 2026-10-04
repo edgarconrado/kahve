@@ -1,7 +1,10 @@
 import { useCallback, useState } from 'react';
+import * as Application from 'expo-application';
+import * as ImagePicker from 'expo-image-picker';
+import { decode } from 'base64-arraybuffer';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
+  Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -43,6 +46,7 @@ export default function Profile() {
   const [stats, setStats] = useState({ orders: 0, sold: 0, cancelled: 0 });
   const [showPin, setShowPin] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -50,19 +54,25 @@ export default function Profile() {
   const [pin1, setPin1] = useState('');
   const [pin2, setPin2] = useState('');
   const [busy, setBusy] = useState(false);
-  const [org, setOrg] = useState<{ name: string; slug: string } | null>(null);
+  const [org, setOrg] = useState<{ name: string; slug: string; logo_url: string | null } | null>(null);
   const [branch, setBranch] = useState<{ name: string; address: string | null } | null>(null);
 
   // Datos de la cafetería (organización y, si aplica, sucursal del empleado)
   useFocusEffect(
     useCallback(() => {
       if (!employee) return;
-      supabase
+      let active = true;
+
+      const loadOrganization = async () => {
+        const { data, error } = await supabase
         .from('organizations')
-        .select('name, slug')
+        .select('name, slug, logo_url')
         .eq('id', employee.organization_id)
         .single()
-        .then(({ data }) => setOrg(data));
+        if (active && data && !error) setOrg(data);
+      };
+
+      loadOrganization();
 
       if (employee.branch_id) {
         supabase
@@ -74,6 +84,10 @@ export default function Profile() {
       } else {
         setBranch(null); // admin sin sucursal fija = acceso a todas
       }
+
+      return () => {
+        active = false;
+      };
     }, [employee?.organization_id, employee?.branch_id]),
   );
 
@@ -179,6 +193,34 @@ export default function Profile() {
     router.replace('/login');
   };
 
+  const pickLogo = async () => {
+    if (!employee) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'], quality: 0.7, base64: true, allowsEditing: true, aspect: [1, 1],
+    });
+    if (result.canceled || !result.assets[0].base64) return;
+
+    setUploadingLogo(true);
+    const filePath = `${employee.organization_id}/logo-${Date.now()}.jpg`;
+    const { error: upError } = await supabase.storage
+      .from('product-images')
+      .upload(filePath, decode(result.assets[0].base64), { contentType: 'image/jpeg' });
+    if (upError) {
+      setUploadingLogo(false);
+      Alert.alert('Error al subir el logo', upError.message);
+      return;
+    }
+    const logoUrl = supabase.storage.from('product-images').getPublicUrl(filePath).data.publicUrl;
+    // Nota: organizations no admite UPDATE directo desde el cliente (RLS
+    // solo tiene política de SELECT, a propósito, para proteger columnas
+    // como plan/stripe). Por eso el logo se guarda vía RPC, que solo
+    // toca logo_url y valida que quien llama sea admin de su org.
+    const { error } = await supabase.rpc('update_org_logo', { p_logo_url: logoUrl });
+    setUploadingLogo(false);
+    if (error) { Alert.alert('Error', error.message); return; }
+    setOrg((o) => o ? { ...o, logo_url: logoUrl } : o);
+  };
+
   const handleSignOut = async () => {
     await signOut();
     router.replace('/login');
@@ -246,9 +288,23 @@ export default function Profile() {
       {/* Permisos del rol */}
       {org && (
         <View style={styles.orgCard}>
-          <View style={styles.orgIcon}>
-            <Ionicons name="storefront-outline" size={20} color="#4A1B0C" />
-          </View>
+          <Pressable
+            style={styles.orgIconWrap}
+            disabled={employee?.role !== 'admin' || uploadingLogo}
+            onPress={pickLogo}>
+            <View style={styles.orgIcon}>
+              {org.logo_url ? (
+                <Image source={{ uri: org.logo_url }} style={styles.orgLogoImg} />
+              ) : (
+                <Ionicons name="storefront-outline" size={20} color="#4A1B0C" />
+              )}
+            </View>
+            {employee?.role === 'admin' && (
+              <View style={styles.orgLogoBadge}>
+                <Ionicons name={uploadingLogo ? 'hourglass-outline' : 'camera'} size={10} color="#fff" />
+              </View>
+            )}
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={styles.orgName}>{org.name}</Text>
             <Text style={styles.orgMeta}>
@@ -256,6 +312,11 @@ export default function Profile() {
                 ? `${branch.name}${branch.address ? ` · ${branch.address}` : ''}`
                 : 'Todas las sucursales'}
             </Text>
+            {employee?.role === 'admin' && (
+              <Text style={styles.orgLogoHint}>
+                {uploadingLogo ? 'Subiendo…' : 'Toca el ícono para cambiar tu logo'}
+              </Text>
+            )}
           </View>
         </View>
       )}
@@ -289,12 +350,6 @@ export default function Profile() {
             <Ionicons name="chevron-forward" size={16} color="#bbb" />
           </Pressable>
         )}
-        <Pressable style={styles.actionRow}
-          onPress={() => router.push('/(app)/printer')}>
-          <Ionicons name="print-outline" size={18} color="#666" />
-          <Text style={styles.actionText}>Impresora</Text>
-          <Ionicons name="chevron-forward" size={16} color="#bbb" />
-        </Pressable>
         <Pressable style={styles.actionRow} onPress={() => setShowPin(true)}>
           <Ionicons name="lock-closed-outline" size={18} color="#666" />
           <Text style={styles.actionText}>Cambiar PIN</Text>
@@ -343,6 +398,9 @@ export default function Profile() {
           <Text style={[styles.actionText, { color: '#A32D2D' }]}>Cerrar sesión</Text>
         </Pressable>
       </View>
+      <Text style={styles.versionText}>
+        Kahve · Versión {Application.nativeApplicationVersion ?? 'desarrollo'}
+      </Text>
 
       {/* Modal: eliminar cuenta */}
       <Modal visible={showDelete} transparent animationType="slide"
@@ -486,16 +544,25 @@ const styles = StyleSheet.create({
     paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#f2f2f2',
   },
   actionText: { flex: 1, fontSize: 14, color: '#222' },
+  versionText: { color: '#9A8A82', fontSize: 11, textAlign: 'center', marginTop: 10 },
   orgCard: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderWidth: 1, borderColor: '#eee', borderRadius: 14,
     padding: 14, marginBottom: 4,
   },
+  orgIconWrap: { width: 40, height: 40 },
   orgIcon: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: '#FAECE7',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   orgName: { fontSize: 15, fontWeight: '700', color: '#222' },
+  orgLogoImg: { width: '100%', height: '100%', borderRadius: 10 },
+  orgLogoBadge: {
+    position: 'absolute', right: -3, bottom: -3, backgroundColor: '#4A1B0C',
+    borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#fff',
+  },
+  orgLogoHint: { fontSize: 10.5, color: '#B08968', marginTop: 2 },
   orgMeta: { fontSize: 12, color: '#888', marginTop: 2 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   deleteWarning: {

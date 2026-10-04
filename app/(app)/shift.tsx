@@ -4,12 +4,42 @@ import {
   Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View, KeyboardAvoidingView, Platform, Modal, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/auth';
 import { useOpenShift } from '../../lib/shift';
+import { printShiftReport } from '../../lib/printer';
 
 // Denominaciones mexicanas para el conteo del corte
 const BILLS = [1000, 500, 200, 100, 50, 20] as const;
+
+// Mismo orden y etiquetas que se muestran en "Ventas del turno por método",
+// reutilizado también para armar el corte impreso/compartido.
+const METHOD_ORDER = [
+  'efectivo', 'tarjeta-debito', 'tarjeta-credito', 'transferencia',
+  'plataforma', 'propinas-efectivo', 'propinas-otros',
+] as const;
+const METHOD_LABELS: Record<string, string> = {
+  'efectivo': 'Efectivo',
+  'tarjeta-debito': 'Tarjeta débito',
+  'tarjeta-credito': 'Tarjeta crédito',
+  'transferencia': 'Transferencia',
+  'plataforma': 'Plataforma (Uber Eats, Didi...)',
+  'propinas-efectivo': 'Propinas en efectivo',
+  'propinas-otros': 'Propinas tarjeta/transf.',
+};
+
+interface ShiftReportInfo {
+  openedAt: string;
+  closedAt: Date;
+  openingCash: number;
+  byMethod: Record<string, number>;
+  movements: { type: 'retiro' | 'deposito'; amount: number; reason: string }[];
+  expectedCash: number;
+  countedCash: number;
+  difference: number;
+}
 
 export default function ShiftScreen() {
   const { width } = useWindowDimensions();
@@ -202,6 +232,100 @@ export default function ShiftScreen() {
     router.back();
   };
 
+  // ---- Imprimir / compartir el corte de caja (mismo patrón que el
+  // ticket de venta en Cobro) ----
+  const printShiftReceipt = async (info: ShiftReportInfo) => {
+    if (!employee) return;
+    try {
+      const { data: org } = await supabase
+        .from('organizations').select('name').eq('id', employee.organization_id).single();
+      await printShiftReport({
+        orgName: org?.name ?? 'Kahve',
+        employeeName: employee.full_name ?? '',
+        openedAt: new Date(info.openedAt),
+        closedAt: info.closedAt,
+        openingCash: info.openingCash,
+        methods: METHOD_ORDER
+          .filter((k) => (info.byMethod[k] ?? 0) > 0)
+          .map((k) => ({ label: METHOD_LABELS[k], amount: info.byMethod[k] })),
+        movements: info.movements,
+        expectedCash: info.expectedCash,
+        countedCash: info.countedCash,
+        difference: info.difference,
+      });
+    } catch (e: any) {
+      Alert.alert(
+        'No se pudo imprimir',
+        e?.message ?? 'Revisa que la impresora esté encendida y conectada.',
+      );
+    }
+  };
+
+  const shareShiftReceipt = async (info: ShiftReportInfo) => {
+    if (!employee) return;
+    try {
+      const { data: org } = await supabase
+        .from('organizations').select('name').eq('id', employee.organization_id).single();
+      const methodRows = METHOD_ORDER
+        .filter((k) => (info.byMethod[k] ?? 0) > 0)
+        .map((k) => `<tr><td>${METHOD_LABELS[k]}</td>
+          <td style="text-align:right">$${info.byMethod[k].toFixed(2)}</td></tr>`)
+        .join('');
+      const movRows = info.movements.length
+        ? info.movements.map((m) => `<tr><td>${m.type === 'retiro' ? 'Retiro' : 'Depósito'} · ${m.reason}</td>
+            <td style="text-align:right">${m.type === 'retiro' ? '−' : '+'}$${Number(m.amount).toFixed(2)}</td></tr>`).join('')
+        : `<tr><td colspan="2" style="color:#999">Sin movimientos</td></tr>`;
+      const sign = info.difference > 0 ? 'Sobrante' : info.difference < 0 ? 'Faltante' : 'Exacto';
+      const diffColor = info.difference < 0 ? '#A32D2D' : info.difference > 0 ? '#854F0B' : '#3B6D11';
+
+      const html = `
+        <html><head><meta charset="utf-8"><style>
+          body { font-family: -apple-system, Helvetica, sans-serif; color: #222;
+                 max-width: 340px; margin: 0 auto; padding: 24px 16px; }
+          h1 { font-size: 20px; color: #4A1B0C; text-align: center; margin: 0; }
+          .sub { text-align: center; color: #888; font-size: 11px; margin: 4px 0 14px; }
+          h2 { font-size: 13px; margin: 16px 0 4px; color: #444; }
+          table { width: 100%; border-collapse: collapse; font-size: 13px; }
+          td { padding: 5px 0; border-bottom: 1px dashed #eee; }
+          .grand td { font-size: 16px; font-weight: 700; padding-top: 8px; border-bottom: none; }
+          .foot { text-align: center; color: #999; font-size: 11px; margin-top: 18px; }
+        </style></head><body>
+          <h1>${org?.name ?? 'Kahve'}</h1>
+          <div class="sub">
+            Corte de caja · ${employee.full_name ?? ''}<br>
+            ${new Date(info.openedAt).toLocaleString('es-MX')} — ${info.closedAt.toLocaleString('es-MX')}
+          </div>
+          <h2>Fondo inicial</h2>
+          <table><tr><td>Apertura</td>
+            <td style="text-align:right">$${info.openingCash.toFixed(2)}</td></tr></table>
+          <h2>Ventas por método</h2>
+          <table>${methodRows || '<tr><td colspan="2" style="color:#999">Sin ventas</td></tr>'}</table>
+          <h2>Movimientos de caja</h2>
+          <table>${movRows}</table>
+          <h2>Resumen de efectivo</h2>
+          <table>
+            <tr><td>Esperado</td><td style="text-align:right">$${info.expectedCash.toFixed(2)}</td></tr>
+            <tr><td>Contado</td><td style="text-align:right">$${info.countedCash.toFixed(2)}</td></tr>
+            <tr class="grand"><td style="color:${diffColor}">Diferencia (${sign})</td>
+              <td style="text-align:right;color:${diffColor}">$${Math.abs(info.difference).toFixed(2)}</td></tr>
+          </table>
+          <div class="foot">Kahve · Punto de venta</div>
+        </body></html>`;
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Enviar corte de caja',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('PDF generado', `Guardado en: ${uri}`);
+      }
+    } catch (e: any) {
+      Alert.alert('No se pudo generar el corte', e?.message ?? '');
+    }
+  };
+
   const TOLERANCE = 10; // pesos de diferencia aceptable sin autorización
 
   const closeShift = async () => {
@@ -249,6 +373,21 @@ export default function ShiftScreen() {
       return;
     }
 
+    // Capturar los datos del corte ANTES de reiniciar el formulario para
+    // el siguiente turno (mismo motivo que en Cobro: si se leen los
+    // states después del reset, imprimir o enviar el corte mostraría
+    // ceros en vez de los datos del turno que se acaba de cerrar).
+    const reportInfo: ShiftReportInfo = {
+      openedAt: shift.opened_at,
+      closedAt: new Date(),
+      openingCash: Number(shift.opening_cash),
+      byMethod,
+      movements: movements.map((m) => ({ type: m.type, amount: m.amount, reason: m.reason })),
+      expectedCash: expected,
+      countedCash,
+      difference,
+    };
+
     // Reiniciar el conteo para el PRÓXIMO turno. Sin esto, si esta
     // pantalla no se desmonta entre un cierre y el corte del siguiente
     // turno, los billetes y monedas contados aquí se quedaban pegados y
@@ -262,8 +401,22 @@ export default function ShiftScreen() {
       'Turno cerrado',
       `Esperado: $${expected.toFixed(2)}\nContado: $${countedCash.toFixed(2)}\n` +
       `Diferencia: $${Math.abs(difference).toFixed(2)} (${sign})`,
+      [
+        {
+          text: 'Imprimir corte',
+          onPress: () => {
+            printShiftReceipt(reportInfo).finally(() => router.back());
+          },
+        },
+        {
+          text: 'Enviar corte',
+          onPress: () => {
+            shareShiftReceipt(reportInfo).finally(() => router.back());
+          },
+        },
+        { text: 'Listo', style: 'cancel', onPress: () => router.back() },
+      ],
     );
-    router.back();
   };
 
   if (!shift) {

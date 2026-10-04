@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import HeaderLogo from '../../../components/HeaderLogo';
+import HeaderUser from '../../../components/HeaderUser';
 
 const SECTIONS: {
   route: string; title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap;
@@ -9,6 +11,11 @@ const SECTIONS: {
     route: '/(app)/admin/menu', title: 'Menú',
     subtitle: 'Productos, precios, modificadores y recetas',
     icon: 'restaurant-outline',
+  },
+  {
+    route: '/(app)/admin/categories', title: 'Categorías',
+    subtitle: 'Renombrar, ordenar y eliminar categorías del menú',
+    icon: 'albums-outline',
   },
   {
     route: '/(app)/admin/team', title: 'Equipo',
@@ -25,13 +32,32 @@ const SECTIONS: {
     subtitle: '2x1 y descuentos automáticos por cantidad',
     icon: 'pricetags-outline',
   },
+  {
+    route: '/(app)/admin/loyalty', title: 'Clientes frecuentes',
+    subtitle: 'Visitas, recompensas y productos de regalo',
+    icon: 'gift-outline',
+  },
+  {
+    route: '/(app)/admin/taxes', title: 'Impuestos',
+    subtitle: 'Configurar el IVA incluido en las ventas',
+    icon: 'receipt-outline',
+  },
+  {
+    route: '/(app)/printer', title: 'Impresora',
+    subtitle: 'Configurar impresora térmica y ancho de papel',
+    icon: 'print-outline',
+  },
 ];
 
 export default function AdminHub() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <View style={styles.header}>
+        <HeaderUser />
         <Text style={styles.title}>Administración</Text>
+        <View style={styles.logoSlot}>
+          <HeaderLogo />
+        </View>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
         {SECTIONS.map((s) => (
@@ -53,8 +79,13 @@ export default function AdminHub() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: 16, paddingTop: 54, paddingBottom: 14 },
-  title: { fontSize: 24, fontWeight: '700', color: '#222' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 30, paddingBottom: 8,
+    backgroundColor: '#4A1B0C', borderBottomWidth: 1, borderBottomColor: '#6B2A17',
+  },
+  title: { fontSize: 16, lineHeight: 20, fontWeight: '700', color: '#FAECE7' },
+  logoSlot: { width: 96, alignItems: 'flex-end' },
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     borderWidth: 1, borderColor: '#eee', borderRadius: 14, padding: 16,

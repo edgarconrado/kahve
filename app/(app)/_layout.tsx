@@ -1,13 +1,16 @@
 import { Redirect, Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import type { ColorValue } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { can } from '../../lib/permissions';
+import HeaderLogo from '../../components/HeaderLogo';
+import HeaderUser from '../../components/HeaderUser';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const icon =
   (name: IoniconName, nameOutline: IoniconName) =>
-    ({ color, size, focused }: { color: string; size: number; focused: boolean }) =>
+    ({ color, size, focused }: { color: ColorValue; size: number; focused: boolean }) =>
       <Ionicons name={focused ? name : nameOutline} size={size} color={color} />;
 
 export default function AppLayout() {
@@ -23,6 +26,15 @@ export default function AppLayout() {
     <Tabs
       screenOptions={{
         headerShown: true,
+        headerStyle: { backgroundColor: '#4A1B0C' },
+        headerTintColor: '#FAECE7',
+        headerTitleStyle: { fontWeight: '700' },
+        headerTitleAlign: 'center',
+        headerShadowVisible: false,
+        headerLeft: () => <HeaderUser />,
+        headerLeftContainerStyle: { paddingLeft: 16 },
+        headerRight: () => <HeaderLogo />,
+        headerRightContainerStyle: { paddingRight: 16 },
         tabBarActiveTintColor: '#4A1B0C',
         tabBarInactiveTintColor: '#9a9a9a',
       }}
@@ -62,6 +74,7 @@ export default function AppLayout() {
         options={{
           title: 'Admin',
           href: can(role, 'menu.edit') ? '/(app)/admin' : null,
+          headerShown: false,
           tabBarIcon: icon('settings', 'settings-outline'),
         }}
       />
@@ -69,10 +82,16 @@ export default function AppLayout() {
         options={{ title: 'Equipo', href: null, headerShown: false }} />
       <Tabs.Screen name="admin/menu"
         options={{ title: 'Menú', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/categories"
+        options={{ title: 'Categorías', href: null, headerShown: false }} />
       <Tabs.Screen name="admin/promotions"
         options={{ title: 'Promociones', href: null, headerShown: false }} />
       <Tabs.Screen name="admin/supplies"
         options={{ title: 'Insumos', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/loyalty"
+        options={{ title: 'Clientes frecuentes', href: null, headerShown: false }} />
+      <Tabs.Screen name="admin/taxes"
+        options={{ title: 'Impuestos', href: null, headerShown: false }} />
 
       <Tabs.Screen
         name="profile"

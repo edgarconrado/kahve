@@ -23,8 +23,6 @@ interface CartState {
   subtotal: () => number;
 }
 
-const IVA = 0.16;
-
 export const lineUnitPrice = (line: Pick<CartLine, 'product' | 'modifiers'>) =>
   line.product.base_price + line.modifiers.reduce((a, m) => a + m.price_delta, 0);
 
@@ -74,11 +72,12 @@ export const useCart = create<CartState>((set, get) => ({
     get().lines.reduce((acc, l) => acc + lineUnitPrice(l) * l.quantity, 0),
 }));
 
-// Los precios del menú YA incluyen IVA. El total es la suma tal cual;
-// el desglose se calcula hacia atrás: base = total / 1.16.
-export const cartTotals = (gross: number) => {
+// Los precios del menú ya incluyen el IVA que el cajero indique. El total
+// no cambia; solo se calcula hacia atrás cuánto corresponde al impuesto.
+export const cartTotals = (gross: number, taxRatePercent = 0) => {
   const total = +gross.toFixed(2);
-  const subtotal = +(total / (1 + IVA)).toFixed(2);
+  const taxRate = Math.max(taxRatePercent, 0) / 100;
+  const subtotal = +(total / (1 + taxRate)).toFixed(2);
   const tax = +(total - subtotal).toFixed(2); // garantiza subtotal + tax = total
   return { subtotal, tax, total };
 };

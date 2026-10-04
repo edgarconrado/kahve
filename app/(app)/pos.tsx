@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  FlatList, Image, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions,
+  Animated, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
@@ -10,6 +11,7 @@ import { useOpenShift } from '../../lib/shift';
 import { useCart, cartTotals } from '../../store/cart';
 import ProductModal from '../../components/ProductModal';
 import TicketSheet from '../../components/TicketSheet';
+import Charge from './charge';
 import type { Modifier, Product } from '../../types/db';
 
 type ProductWithModifiers = Product & { modifiers: Modifier[] };
@@ -36,6 +38,30 @@ export default function Pos() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<ProductWithModifiers | null>(null);
   const [showTicket, setShowTicket] = useState(false);
+  const [showCharge, setShowCharge] = useState(false);
+  const chargeAnimation = useRef(new Animated.Value(0)).current;
+  const chargePanelWidth = Math.min(430, width * 0.46);
+
+  useEffect(() => {
+    if (!showCharge) return;
+    chargeAnimation.setValue(0);
+    Animated.timing(chargeAnimation, {
+      toValue: 1,
+      duration: 260,
+      useNativeDriver: true,
+    }).start();
+  }, [showCharge, chargeAnimation]);
+
+  const openCharge = () => setShowCharge(true);
+  const closeCharge = () => {
+    Animated.timing(chargeAnimation, {
+      toValue: 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setShowCharge(false);
+    });
+  };
 
   // Recarga al recuperar foco: así el POS refleja de inmediato los
   // cambios hechos en Menú (agotados, precios, productos nuevos)
@@ -242,11 +268,41 @@ export default function Pos() {
         onClose={() => setShowTicket(false)}
         onCheckout={() => {
           setShowTicket(false);
-          router.push('/(app)/charge');
+          if (width >= 700) openCharge();
+          else router.push('/(app)/charge');
         }}
       />
 
-      {itemCount > 0 && (
+      {showCharge && width >= 700 && (
+        <>
+          <Animated.View style={[styles.chargeBackdrop, { opacity: chargeAnimation }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeCharge} />
+          </Animated.View>
+          <Animated.View style={[
+            styles.chargePanel,
+            {
+              width: chargePanelWidth,
+              opacity: chargeAnimation,
+              transform: [{
+                translateX: chargeAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [chargePanelWidth, 0],
+                }),
+              }],
+            },
+          ]}>
+            <View style={styles.chargePanelHeader}>
+              <Text style={styles.chargePanelTitle}>Cobrar</Text>
+              <Pressable onPress={closeCharge} hitSlop={10}>
+                <Ionicons name="close" size={22} color="#4A1B0C" />
+              </Pressable>
+            </View>
+            <Charge embedded onClose={closeCharge} />
+          </Animated.View>
+        </>
+      )}
+
+      {itemCount > 0 && !showCharge && (
         <View style={styles.ticketBar}>
           <Pressable
             style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
@@ -265,7 +321,10 @@ export default function Pos() {
             </Pressable>
             <Pressable
               style={styles.chargeButton}
-              onPress={() => router.push('/(app)/charge')}
+              onPress={() => {
+                if (width >= 700) openCharge();
+                else router.push('/(app)/charge');
+              }}
             >
               <Text style={styles.chargeText}>Cobrar</Text>
               <Ionicons name="arrow-forward" size={16} color="#4A1B0C" />
@@ -279,6 +338,22 @@ export default function Pos() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  chargeBackdrop: {
+    position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+    backgroundColor: 'rgba(30, 14, 8, 0.28)',
+  },
+  chargePanel: {
+    position: 'absolute', top: 0, right: 0, bottom: 0,
+    backgroundColor: '#fff', borderLeftWidth: 1, borderLeftColor: '#e5e5e5',
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 12,
+    shadowOffset: { width: -3, height: 0 }, elevation: 8,
+  },
+  chargePanelHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
+  },
+  chargePanelTitle: { fontSize: 17, fontWeight: '700', color: '#222' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 8, padding: 24 },
   noShiftTitle: { fontSize: 17, fontWeight: '600' },
   noShiftText: { fontSize: 13, color: '#666', textAlign: 'center' },

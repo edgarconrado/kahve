@@ -42,6 +42,7 @@ create table organizations (
   slug        text unique not null,      -- 'cafe-central' (para URLs/soporte)
   is_active   boolean not null default true,
   plan        text not null default 'trial',  -- trial | basico | pro (futuro billing)
+  tax_rate    numeric(5,2) not null default 16 check (tax_rate between 0 and 100),
   created_at  timestamptz not null default now()
 );
 
@@ -269,6 +270,33 @@ set search_path = public
 as $$
   select current_employee_role() = any(roles)
 $$;
+
+create or replace function update_org_tax_rate(p_tax_rate numeric)
+returns void
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  if not has_role(array['admin']::employee_role[]) then
+    raise exception 'Solo un administrador puede configurar el IVA.';
+  end if;
+
+  if p_tax_rate is null or p_tax_rate < 0 or p_tax_rate > 100 then
+    raise exception 'El IVA debe estar entre 0 y 100.';
+  end if;
+
+  update organizations
+  set tax_rate = round(p_tax_rate, 2)
+  where id = current_org();
+
+  if not found then
+    raise exception 'No se encontró la organización.';
+  end if;
+end;
+$$;
+
+revoke all on function update_org_tax_rate(numeric) from public;
+grant execute on function update_org_tax_rate(numeric) to authenticated;
 
 -- ¿El empleado puede operar sobre esta sucursal?
 -- Debe ser de su organización Y, si tiene sucursal asignada, coincidir.

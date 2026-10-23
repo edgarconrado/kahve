@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import {
-  Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { supabase } from '../../lib/supabase';
+import type { PurchasesPackage } from 'react-native-purchases';
 import { useAuth } from '../../lib/auth';
+import { usePlan } from '../../lib/plan';
 import {
-  usePlan, STRIPE_LINK_MONTHLY, STRIPE_LINK_YEARLY, STORE_BUILD,
-  KAHVE_SUBSCRIBE_PAGE, HIDE_PRO_UI,
-} from '../../lib/plan';
+  getProPackages,
+  hasProEntitlement,
+  openSubscriptionManagement,
+  purchaseProPackage,
+  restoreProPurchases,
+} from '../../lib/revenuecat';
 
 const BENEFITS = [
   ['people', 'Empleados ilimitados (el gratuito incluye 3)'],
@@ -19,52 +23,87 @@ const BENEFITS = [
   ['image', 'Fotos en tus productos'],
 ] as const;
 
+function packageLabel(selectedPackage: PurchasesPackage) {
+  if (selectedPackage.packageType === 'ANNUAL') return 'Suscripción anual';
+  if (selectedPackage.packageType === 'MONTHLY') return 'Suscripción mensual';
+  return selectedPackage.product.title;
+}
+
 export default function Upgrade() {
   const { employee } = useAuth();
   const { tier, isTrial, daysLeft } = usePlan(employee);
-  const [slug, setSlug] = useState<string | null>(null);
-
-  // Defensa adicional: esta pantalla no debería ser alcanzable en iOS
-  // (el enlace en Perfil ya está oculto), pero si por algún otro camino
-  // se llega aquí, no renderiza nada relacionado a compras — regresa
-  // de inmediato. Ver Guideline 3.1.1 de Apple.
-  useEffect(() => {
-    if (HIDE_PRO_UI) router.back();
-  }, []);
-  if (HIDE_PRO_UI) return null;
+  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyPackage, setBusyPackage] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       if (!employee) return;
-      supabase
-        .from('organizations')
-        .select('slug')
-        .eq('id', employee.organization_id)
-        .single()
-        .then(({ data }) => setSlug(data?.slug ?? null));
-    }, [employee?.organization_id]),
+      if (employee.role !== 'admin') {
+        router.back();
+        return;
+      }
+
+      let active = true;
+      setLoading(true);
+      getProPackages(employee.organization_id)
+        .then((availablePackages) => {
+          if (active) setPackages(availablePackages);
+        })
+        .catch((error) => {
+          if (active) Alert.alert('No se pudieron cargar los planes', error.message);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => { active = false; };
+    }, [employee?.organization_id, employee?.role]),
   );
 
-  const subscribe = (baseLink: string) => {
-    if (!slug) {
-      Alert.alert('Un momento', 'Cargando los datos de tu cafetería…');
-      return;
-    }
-    if (baseLink.includes('PEGA_EL')) {
-      Alert.alert(
-        'Falta configurar',
-        'Los Payment Links de Stripe aún no están pegados en lib/plan.ts.',
+  const purchase = async (selectedPackage: PurchasesPackage) => {
+    if (!employee) return;
+    setBusyPackage(selectedPackage.identifier);
+    try {
+      const customerInfo = await purchaseProPackage(
+        employee.organization_id,
+        selectedPackage,
       );
-      return;
+      if (hasProEntitlement(customerInfo)) {
+        Alert.alert('Kahve Pro activado', 'Tu suscripción ya está activa.');
+        router.back();
+      }
+    } catch (error: any) {
+      if (!error?.userCancelled) {
+        Alert.alert('No se completó la compra', error?.message ?? 'Inténtalo de nuevo.');
+      }
+    } finally {
+      setBusyPackage(null);
     }
-    // El slug identifica a la organización ante el webhook de Stripe
-    Linking.openURL(`${baseLink}?client_reference_id=${slug}`);
+  };
+
+  const restore = async () => {
+    if (!employee) return;
+    setBusyPackage('restore');
+    try {
+      const customerInfo = await restoreProPurchases(employee.organization_id);
+      const restored = hasProEntitlement(customerInfo);
+      Alert.alert(
+        restored ? 'Compra restaurada' : 'Sin compras activas',
+        restored
+          ? 'Kahve Pro vuelve a estar activo.'
+          : 'No encontramos una suscripción activa para esta cuenta.',
+      );
+    } catch (error: any) {
+      Alert.alert('No se pudo restaurar', error?.message ?? 'Inténtalo de nuevo.');
+    } finally {
+      setBusyPackage(null);
+    }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>☕ Kahve Pro</Text>
+        <Text style={styles.heroTitle}>Kahve Pro</Text>
         <Text style={styles.heroSub}>
           {tier === 'pro' && !isTrial
             ? 'Tu suscripción está activa. ¡Gracias!'
@@ -83,86 +122,65 @@ export default function Upgrade() {
         ))}
       </View>
 
-      {tier === 'pro' && !isTrial && !STORE_BUILD && (
+      {tier === 'pro' && !isTrial ? (
         <Pressable style={styles.manageButton} onPress={async () => {
-          const { data, error } = await supabase.functions.invoke('create-portal-session');
-
-          // Diagnóstico: mostrar el motivo real en vez de un mensaje genérico
-          let failure: string | null = data?.error ?? null;
-          if (error && !failure) {
-            const anyErr = error as any;
-            if (anyErr?.context?.text) {
-              try {
-                const raw = await anyErr.context.text();
-                try { failure = JSON.parse(raw).error ?? raw; }
-                catch { failure = raw; }
-              } catch { failure = error.message; }
-            } else {
-              failure = error.message;
-            }
+          if (!employee) return;
+          try {
+            await openSubscriptionManagement(employee.organization_id);
+          } catch (error: any) {
+            Alert.alert('No se pudo abrir', error?.message ?? 'Inténtalo de nuevo.');
           }
-
-          if (failure || !data?.url) {
-            Alert.alert('No se pudo abrir', failure ?? 'Respuesta sin URL del portal.');
-            return;
-          }
-          Linking.openURL(data.url);
         }}>
           <Ionicons name="settings-outline" size={16} color="#4A1B0C" />
-          <Text style={styles.manageButtonText}>
-            Administrar o cancelar mi suscripción
-          </Text>
+          <Text style={styles.manageButtonText}>Administrar suscripción</Text>
         </Pressable>
-      )}
-
-      {(tier === 'free' || isTrial) && STORE_BUILD && (
-        <>
-          <Text style={styles.storeHint}>
-            Para suscribirte, visita nuestra página de planes y precios —
-            ahí puedes elegir mensual o anual y completar tu pago de forma
-            segura.
-          </Text>
+      ) : loading ? (
+        <ActivityIndicator color="#4A1B0C" />
+      ) : packages.length === 0 ? (
+        <Text style={styles.hint}>
+          No hay planes disponibles. Revisa el offering actual en RevenueCat.
+        </Text>
+      ) : (
+        packages.map((selectedPackage) => (
           <Pressable
-            style={styles.webButton}
-            onPress={() => {
-              const url = slug
-                ? `${KAHVE_SUBSCRIBE_PAGE}?slug=${encodeURIComponent(slug)}`
-                : KAHVE_SUBSCRIBE_PAGE;
-              Linking.openURL(url);
-            }}
+            key={selectedPackage.identifier}
+            style={styles.planButton}
+            disabled={busyPackage !== null}
+            onPress={() => purchase(selectedPackage)}
           >
-            <Ionicons name="globe-outline" size={17} color="#4A1B0C" />
-            <Text style={styles.webButtonText}>Ver planes y precios</Text>
-            <Ionicons name="open-outline" size={15} color="#B27358" />
+            {busyPackage === selectedPackage.identifier ? (
+              <ActivityIndicator color="#4A1B0C" />
+            ) : (
+              <>
+                <Text style={styles.planPrice}>{selectedPackage.product.priceString}</Text>
+                <Text style={styles.planLabel}>{packageLabel(selectedPackage)}</Text>
+              </>
+            )}
           </Pressable>
-        </>
+        ))
       )}
 
-      {(tier === 'free' || isTrial) && !STORE_BUILD && (
-        <>
-          <Pressable style={styles.planButton}
-            onPress={() => subscribe(STRIPE_LINK_MONTHLY)}>
-            <Text style={styles.planPrice}>$249 <Text style={styles.planPer}>MXN/mes</Text></Text>
-            <Text style={styles.planLabel}>Suscripción mensual</Text>
-          </Pressable>
-          <Pressable style={[styles.planButton, styles.planButtonBest]}
-            onPress={() => subscribe(STRIPE_LINK_YEARLY)}>
-            <View style={styles.bestBadge}>
-              <Text style={styles.bestBadgeText}>2 MESES GRATIS</Text>
-            </View>
-            <Text style={[styles.planPrice, { color: '#FAECE7' }]}>
-              $2,490 <Text style={[styles.planPer, { color: '#F5C4B3' }]}>MXN/año</Text>
-            </Text>
-            <Text style={[styles.planLabel, { color: '#F0997B' }]}>Suscripción anual</Text>
-          </Pressable>
-
-          <Text style={styles.hint}>
-            El pago se procesa de forma segura con Stripe en tu navegador.
-            Tu plan se activa automáticamente en cuanto se confirma —
-            regresa a la app y listo.
-          </Text>
-        </>
-      )}
+      <Pressable
+        style={styles.restoreButton}
+        disabled={busyPackage !== null}
+        onPress={restore}
+      >
+        <Text style={styles.restoreText}>
+          {busyPackage === 'restore' ? 'Restaurando…' : 'Restaurar compras'}
+        </Text>
+      </Pressable>
+      <Text style={styles.hint}>
+        El cobro y la renovación se administran de forma segura desde tu tienda.
+      </Text>
+      <View style={styles.legalLinks}>
+        <Pressable onPress={() => router.push('/(app)/terminos')}>
+          <Text style={styles.legalLink}>Términos de uso</Text>
+        </Pressable>
+        <Text style={styles.legalSeparator}>·</Text>
+        <Pressable onPress={() => router.push('/(app)/privacidad')}>
+          <Text style={styles.legalLink}>Aviso de privacidad</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -170,43 +188,28 @@ export default function Upgrade() {
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 14, backgroundColor: '#fff', flexGrow: 1 },
   hero: {
-    backgroundColor: '#4A1B0C', borderRadius: 16, padding: 22, alignItems: 'center',
+    backgroundColor: '#4A1B0C', borderRadius: 8, padding: 22, alignItems: 'center',
   },
   heroTitle: { color: '#FAECE7', fontSize: 24, fontWeight: '800' },
   heroSub: { color: '#F5C4B3', fontSize: 13, marginTop: 6, textAlign: 'center' },
-  benefits: {
-    borderWidth: 1, borderColor: '#eee', borderRadius: 14, padding: 16, gap: 12,
-  },
+  benefits: { borderWidth: 1, borderColor: '#eee', borderRadius: 8, padding: 16, gap: 12 },
   benefitRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   benefitText: { flex: 1, fontSize: 13, color: '#333', lineHeight: 18 },
   planButton: {
-    borderWidth: 1.5, borderColor: '#4A1B0C', borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center',
+    minHeight: 72, borderWidth: 1.5, borderColor: '#4A1B0C', borderRadius: 8,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
   },
-  planButtonBest: { backgroundColor: '#4A1B0C', position: 'relative' },
-  bestBadge: {
-    position: 'absolute', top: -10, backgroundColor: '#F0997B',
-    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 2,
-  },
-  bestBadgeText: { fontSize: 10, fontWeight: '800', color: '#4A1B0C' },
-  planPrice: { fontSize: 22, fontWeight: '800', color: '#4A1B0C' },
-  planPer: { fontSize: 13, fontWeight: '600', color: '#888' },
-  planLabel: { fontSize: 12, color: '#888', marginTop: 2 },
-  hint: { fontSize: 11, color: '#999', textAlign: 'center', lineHeight: 16 },
-  storeHint: {
-    fontSize: 13, color: '#555', textAlign: 'center',
-    lineHeight: 19, paddingHorizontal: 8, marginBottom: 4,
-  },
-  webButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1.5, borderColor: '#4A1B0C', borderRadius: 12,
-    paddingVertical: 15,
-  },
-  webButtonText: { fontSize: 14.5, color: '#4A1B0C', fontWeight: '700' },
+  planPrice: { fontSize: 20, fontWeight: '800', color: '#4A1B0C' },
+  planLabel: { fontSize: 12, color: '#777', marginTop: 2 },
+  hint: { fontSize: 11, color: '#777', textAlign: 'center', lineHeight: 16 },
   manageButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 1, borderColor: '#ddd', borderRadius: 12,
-    paddingVertical: 14, marginTop: 4,
+    borderWidth: 1, borderColor: '#ddd', borderRadius: 8, paddingVertical: 14,
   },
   manageButtonText: { fontSize: 13, color: '#4A1B0C', fontWeight: '600' },
+  restoreButton: { alignItems: 'center', paddingVertical: 10 },
+  restoreText: { color: '#4A1B0C', fontSize: 13, fontWeight: '600' },
+  legalLinks: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  legalLink: { color: '#4A1B0C', fontSize: 11, textDecorationLine: 'underline' },
+  legalSeparator: { color: '#999', fontSize: 11 },
 });

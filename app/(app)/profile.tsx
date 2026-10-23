@@ -213,7 +213,7 @@ export default function Profile() {
     const logoUrl = supabase.storage.from('product-images').getPublicUrl(filePath).data.publicUrl;
     // Nota: organizations no admite UPDATE directo desde el cliente (RLS
     // solo tiene política de SELECT, a propósito, para proteger columnas
-    // como plan/stripe). Por eso el logo se guarda vía RPC, que solo
+    // como plan). Por eso el logo se guarda vía RPC, que solo
     // toca logo_url y valida que quien llama sea admin de su org.
     const { error } = await supabase.rpc('update_org_logo', { p_logo_url: logoUrl });
     setUploadingLogo(false);

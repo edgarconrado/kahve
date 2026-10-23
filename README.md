@@ -34,6 +34,29 @@ Roles: admin, supervisor, cajero, barista.
 
 4. Copia `.env.example` a `.env` y llena tus llaves.
 
+## Suscripciones con RevenueCat
+
+La app usa el entitlement `pro` del offering actual de RevenueCat. Configura
+productos equivalentes en App Store Connect y Google Play Console, adjúntalos
+al entitlement y agrega estas variables públicas al perfil de EAS:
+
+```text
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY=appl_...
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY=goog_...
+```
+
+Despliega la función y configura sus secretos:
+
+```sh
+npx supabase functions deploy revenuecat-sync --no-verify-jwt
+npx supabase secrets set REVENUECAT_SECRET_API_KEY=sk_... REVENUECAT_WEBHOOK_AUTH="Bearer un-secreto-largo"
+```
+
+En RevenueCat crea un webhook a
+`https://<project-ref>.supabase.co/functions/v1/revenuecat-sync` y usa como
+Authorization exactamente el valor de `REVENUECAT_WEBHOOK_AUTH`. Las compras
+reales requieren un development build; Expo Go solo ofrece el modo preview.
+
 ## Modelo de autenticación
 
 Cada empleado tiene su cuenta en auth.users y su fila en `employees`

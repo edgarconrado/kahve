@@ -45,7 +45,7 @@ export default function Privacidad() {
         {
           heading: 'Pagos',
           body: [
-            'Los pagos de suscripción se procesan a través de Stripe. Los datos de tu tarjeta los recibe y resguarda directamente Stripe bajo sus propios estándares de seguridad (PCI-DSS); nosotros nunca los almacenamos ni tenemos acceso a ellos.',
+            'Los pagos de suscripción se procesan mediante Apple App Store o Google Play, según tu dispositivo. RevenueCat nos ayuda a validar el estado de la suscripción. Nosotros no recibimos ni almacenamos los datos de tu tarjeta.',
           ],
         },
         {
